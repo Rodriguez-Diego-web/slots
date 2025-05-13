@@ -8,13 +8,13 @@ import { Symbol } from './slotLogic';
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDcE3-PbiujHJ1eQW_ZrW0NXya0tjfcuAM",
-  authDomain: "slotgame-84887.firebaseapp.com",
-  projectId: "slotgame-84887",
-  storageBucket: "slotgame-84887.firebasestorage.app",
-  messagingSenderId: "932278755769",
-  appId: "1:932278755769:web:5210e0bccdb0403d42d668",
-  measurementId: "G-3M0GRRM5VE"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
