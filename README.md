@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CUXSNACK Slot Machine
 
-## Getting Started
+Eine interaktive Slot Machine für den CUXSNACK Export-Snack Shop. Diese Anwendung wurde mit Next.js und React entwickelt und bietet ein spannendes Spielerlebnis mit der Möglichkeit, virtuelle Preise zu gewinnen.
 
-First, run the development server:
+## Features
+
+- Reaktive 3-Walzen Slot Machine mit authentischem Spielgefühl
+- Visuelle Effekte und Animationen für ein immersives Spielerlebnis
+- Spezielle Gewinnlogik mit kontrollierten Gewinnraten
+- Hauptgewinn (Jackpot) durch drei "777" Symbole
+- Design im CUXSNACK Branding (Schwarz, Weiß, Grau)
+- Mobile-friendly Responsive Design
+
+## Voraussetzungen
+
+- Node.js 18.0.0 oder höher
+- npm oder yarn oder pnpm oder bun
+
+## Installation
 
 ```bash
+# Abhängigkeiten installieren
+npm install
+
+# Entwicklungsserver starten
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Öffne [http://localhost:3000](http://localhost:3000) mit deinem Browser, um die Slot Machine zu sehen.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Symbole anpassen
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Die Slot Machine verwendet derzeit Platzhalter für die Symbol-Bilder. Um diese durch echte Bilder zu ersetzen:
 
-## Learn More
+1. Ersetze die Dateien im Verzeichnis `/public/symbols/` mit deinen eigenen Bildern
+2. Folgende Bilder werden benötigt:
+   - `seven.png` - Symbol für den Jackpot (777)
+   - `monster.png` - Monster Energy Drink
+   - `cola.png` - Coca Cola
+   - `heinz.png` - Heinz Ketchup
+   - `fanta.png` - Fanta Orange
+   - `chips.png` - Chips/Takis
+   - `water.png` - Mineralwasser
 
-To learn more about Next.js, take a look at the following resources:
+Idealerweise sollten alle Bilder quadratisch sein (z.B. 200x200 Pixel) mit transparentem Hintergrund.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Gewinnlogik anpassen
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Die Gewinnwahrscheinlichkeiten und Auszahlungsquoten können in der Datei `src/lib/slotLogic.ts` angepasst werden:
 
-## Deploy on Vercel
+- Ändere die `weight`-Werte der Symbole, um ihre Häufigkeit anzupassen
+- Ändere die `value`-Werte, um die Auszahlungen zu ändern
+- Passe die Konstanten `CYCLE_LENGTH` und `JACKPOT_MIN_GAMES` an, um das Spielverhalten zu ändern
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Technologie-Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js](https://nextjs.org) - React Framework
+- [React](https://reactjs.org) - Frontend Bibliothek
+- [TypeScript](https://www.typescriptlang.org) - Typsicheres JavaScript
+- [TailwindCSS](https://tailwindcss.com) - Utility-First CSS Framework
