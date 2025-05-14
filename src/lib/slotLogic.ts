@@ -14,7 +14,7 @@ export const symbols: Symbol[] = [
     id: 'seven',
     name: '7',
     image: '/symbols/gold7.png',
-    weight: 100, // Very rare
+    weight: 1, // Very rare
     value: 100, // Jackpot!
     winningWordForMatch: "JACKPOT!"
   },
