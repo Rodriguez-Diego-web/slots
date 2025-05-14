@@ -46,7 +46,7 @@ export const symbols: Symbol[] = [
     id: 'cheetos',
     name: 'Cheetos',
     image: '/symbols/Cheetos.png',
-    weight: 10, // Reduziert (war 12)
+    weight: 8, // Reduziert (war 12)
     value: 5,
     winningWordForMatch: "CHEETOS CRUNCH!"
   },
