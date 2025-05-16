@@ -8,7 +8,16 @@ import WinPopup from './WinPopup';
 import LoginPromptModal from './LoginPromptModal';
 import OutOfSpinsModal from './OutOfSpinsModal';
 import { spin, Symbol, SpinResult } from '@/lib/slotLogic';
-import { getUserProfile, initializeOrResetSpins, saveUserWin, getCurrentDateString } from '../lib/firebase';
+import { 
+  getUserProfile, 
+  initializeOrResetSpins, 
+  saveUserWin, 
+  getCurrentDateString,
+  saveGuestSpinToLocalStorage,
+  checkGuestSpinStatus,
+  clearGuestSpinFromLocalStorage,
+  updateUserSpinsCount
+} from '../lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
 const SlotMachine = () => {
@@ -51,6 +60,9 @@ const SlotMachine = () => {
 
     const updateUserState = async () => {
       if (currentUser) {
+        // Beim Login lokalen Gast-Spin-Status löschen
+        clearGuestSpinFromLocalStorage();
+        
         const profile = await getUserProfile(currentUser.uid);
         const currentDate = getCurrentDateString();
 
@@ -64,8 +76,10 @@ const SlotMachine = () => {
         }
         setGuestSpinUsed(false);
       } else {
-        setAttemptsLeft(1);
-        setGuestSpinUsed(false);
+        // Gast-Status aus dem LocalStorage prüfen
+        const hasUsedSpin = checkGuestSpinStatus();
+        setGuestSpinUsed(hasUsedSpin);
+        setAttemptsLeft(hasUsedSpin ? 0 : 1);
       }
     };
 
@@ -87,10 +101,21 @@ const SlotMachine = () => {
 
     if (!currentUser && !guestSpinUsed) {
       setGuestSpinUsed(true);
+      // Speichere den Gast-Spin im localStorage für Seitenaktualisierungen
+      saveGuestSpinToLocalStorage();
     }
 
     if (currentUser && attemptsLeft > 0) {
-      setAttemptsLeft(prev => prev - 1);
+      // Reduziere die Anzahl der Versuche lokal
+      const newAttemptsLeft = attemptsLeft - 1;
+      setAttemptsLeft(newAttemptsLeft);
+      
+      // Speichere den aktualisierten Wert in der Datenbank
+      try {
+        updateUserSpinsCount(currentUser.uid, newAttemptsLeft);
+      } catch (error) {
+        console.error('Fehler beim Aktualisieren der Versuche:', error);
+      }
     } else if (currentUser && attemptsLeft <= 0) {
       setShowOutOfSpinsModal(true);
       return;

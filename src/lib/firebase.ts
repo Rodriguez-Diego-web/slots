@@ -120,6 +120,29 @@ export const saveUserWin = async (
   }
 };
 
+// Funktionen für die Verwaltung von Gast-Spins über localStorage
+export const saveGuestSpinToLocalStorage = () => {
+  const currentDate = getCurrentDateString();
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('guestSpin', currentDate);
+  }
+};
+
+export const checkGuestSpinStatus = () => {
+  if (typeof window !== 'undefined') {
+    const lastSpinDate = localStorage.getItem('guestSpin');
+    const currentDate = getCurrentDateString();
+    return lastSpinDate === currentDate;
+  }
+  return false;
+};
+
+export const clearGuestSpinFromLocalStorage = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('guestSpin');
+  }
+};
+
 export { 
   app, 
   auth, 
