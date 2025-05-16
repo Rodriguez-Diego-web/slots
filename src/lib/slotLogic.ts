@@ -8,64 +8,63 @@ export type Symbol = {
   winningWordForMatch?: string; // Word to display for a 3-of-a-kind win
 };
 
-// Define all possible symbols
 export const symbols: Symbol[] = [
   {
     id: 'seven',
     name: '7',
     image: '/symbols/gold7.png',
-    weight: 1, // Very rare
-    value: 100, // Jackpot!
+    weight: 1,    // ~2.5% (1/40)
+    value: 100,
     winningWordForMatch: "JACKPOT!"
   },
   {
     id: 'gutschein',
     name: 'Gutschein',
-    image: '/symbols/Gutschein.png',
-    weight: 2, // Belassen (war 2)
+    image: '/symbols/2.png',
+    weight: 2,    // ~5% (2/40)
     value: 20,
     winningWordForMatch: "GUTSCHEIN GEWONNEN!"
   },
   {
     id: 'lifebar',
     name: 'Lifebar',
-    image: '/symbols/lifebar.png',
-    weight: 3, // Belassen (war 3)
+    image: '/symbols/7.png',
+    weight: 3,    // ~7.5% (3/40)
     value: 15,
-    winningWordForMatch: "LIFEBAR BONUS!"
+    winningWordForMatch: "Calypso deiner Wahl"
   },
   {
     id: 'takis',
     name: 'Takis',
-    image: '/symbols/Takis.png',
-    weight: 4, // Belassen (war 4)
+    image: '/symbols/4.png',
+    weight: 4,    // ~10% (4/40)
     value: 10,
     winningWordForMatch: "FEURIGE TAKIS!"
   },
   {
     id: 'cheetos',
     name: 'Cheetos',
-    image: '/symbols/Cheetos.png',
-    weight: 8, // Reduziert (war 12)
+    image: '/symbols/3.png',
+    weight: 8,    // 20% (8/40)
     value: 5,
-    winningWordForMatch: "CHEETOS CRUNCH!"
+    winningWordForMatch: "Doritos deiner Wahl"
   },
   {
     id: 'lays',
     name: 'Lays',
-    image: '/symbols/Lays.png',
-    weight: 5, // Reduziert (war 6) 
+    image: '/symbols/5.png',
+    weight: 4,    // ~10% (4/40)
     value: 3,
-    winningWordForMatch: "LAYS PARTYPACK!"
+    winningWordForMatch: "Snickers deiner Wahl"
   },
   {
     id: 'pombaeren',
     name: 'Pombären',
-    image: '/symbols/pombearen.png',
-    weight: 5, // Reduziert (war 6)
+    image: '/symbols/1.png',
+    weight: 4,    // ~10% (4/40)
     value: 2,
-    winningWordForMatch: "POMBÄREN SPASS!"
-  },
+    winningWordForMatch: "Capri-Sun deiner Wahl"
+  }
 ];
 
 // Calculate total weight for random selection

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { loadSounds, playSpinSound, stopSpinSound } from '@/lib/sounds';
 import Reel, { ReelRefMethods } from './Reel';
 import Controls from './Controls';
 import WinPopup from './WinPopup';
@@ -32,6 +33,16 @@ const SlotMachine = () => {
   useEffect(() => {
     finalSymbolsRef.current = finalSymbols;
   }, [finalSymbols]);
+
+  // Sound beim ersten Laden initialisieren
+  useEffect(() => {
+    loadSounds().catch(console.error);
+    
+    // Aufräumen beim Komponenten-Abbau
+    return () => {
+      stopSpinSound();
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -85,11 +96,17 @@ const SlotMachine = () => {
       return;
     }
 
+    // Spin-Sound abspielen
+    const stopSound = playSpinSound();
+    
+    // Zustand zurücksetzen
     setSpinning(true);
     setWinAmount(0);
     setWinningWord(null);
+    setShowWinPopup(false);
     completedReelsRef.current = 0;
-
+    
+    // Spin-Ergebnis generieren
     const spinResult: SpinResult = spin();
     
     finalSymbolsRef.current = spinResult.symbols;
@@ -97,37 +114,51 @@ const SlotMachine = () => {
 
     latestWinAmountRef.current = spinResult.winAmount;
     latestWinningWordRef.current = spinResult.winningWord;
-
-    setWinAmount(spinResult.winAmount);
-    setWinningWord(spinResult.winningWord);
-
+    
+    // Rollen drehen
     reelRefs.current.forEach(reel => reel?.startSpinning(spinResult.symbols));
+    
+    // Aufräumfunktion für den Sound zurückgeben
+    return stopSound;
   }, [spinning, currentUser, guestSpinUsed, isAuthLoading, attemptsLeft]);
 
-  const handleReelComplete = useCallback(() => {
+  const handleReelComplete = useCallback(async () => {
     completedReelsRef.current += 1;
-
+    
     if (completedReelsRef.current === 3) {
       setSpinning(false);
-
-      const currentSpinWinAmount = latestWinAmountRef.current;
-      const currentSpinWinningWord = latestWinningWordRef.current;
-
-      if (currentSpinWinAmount > 0) {
-        if (currentUser && finalSymbolsRef.current) {
+      
+      // Sound nach einer kurzen Verzögerung stoppen (1000ms = 1 Sekunde)
+      setTimeout(() => {
+        stopSpinSound();
+      }, 1000);
+      
+      // Show win popup if there's a win
+      if (latestWinAmountRef.current > 0 || latestWinningWordRef.current) {
+        const winAmount = latestWinAmountRef.current;
+        const winningWord = latestWinningWordRef.current;
+        
+        // Setze die Gewinninformationen
+        setWinAmount(winAmount);
+        setWinningWord(winningWord);
+        
+        // Zeige das Popup sofort mit einer kleinen Verzögerung
+        // damit die Animationen flüssig aussehen
+        setTimeout(() => {
+          setShowWinPopup(true);
+        }, 100);
+        
+        // Speichere den Gewinn im Hintergrund (nicht blockierend)
+        if (currentUser && winningWord) {
           saveUserWin(
-            currentUser.uid,
-            currentSpinWinAmount,
-            currentSpinWinningWord,
+            currentUser.uid, 
+            winAmount, 
+            winningWord,
             finalSymbolsRef.current
-          );
+          ).catch(error => {
+            console.error('Error saving win to Firebase:', error);
+          });
         }
-
-        if (currentSpinWinningWord) {
-        } else {
-          setWinningWord(`Gewinn: ${currentSpinWinAmount} Punkte!`);
-        }
-        setShowWinPopup(true);
       }
     }
   }, [currentUser]);
