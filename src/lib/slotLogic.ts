@@ -12,7 +12,7 @@ export const symbols: Symbol[] = [
   {
     id: 'seven',
     name: '7',
-    image: '/symbols/7.png',
+    image: '/symbols/6.png',
     weight: 1,    // ~2.5% (1/40)
     value: 100,
     winningWordForMatch: "JACKPOT!"

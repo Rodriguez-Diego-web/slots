@@ -16,15 +16,17 @@ interface ReelProps {
   reelId: number; // Add a unique ID for each reel for debugging/keying if needed
 }
 
-const REEL_STRIP_LENGTH = 30; // Length of the symbol strip for each reel
-const SYMBOL_HEIGHT = 120; 
-const VISIBLE_SYMBOLS = 3; 
-const MAX_SPEED = 30; // Adjusted for feel
-const ACCELERATION = 0.3; // Speed increment per frame
-const DECELERATION_FACTOR = 0.97; // Factor to slow down by each frame when stopping
-const TARGETED_STOP_ANTICIPATION_SPINS = 1.5; // How many "extra" spins before targeted stop
-const MIN_SPEED_NEAR_TARGET = 0.5;
-const VERY_MIN_SPEED = 0.3; // Increased from 0.1
+const REEL_STRIP_LENGTH = 30; // Länge des Symbolstreifens für jede Rolle
+const SYMBOL_HEIGHT = 120; // Höhe jedes Symbols in Pixeln
+const VISIBLE_SYMBOLS = 3; // Anzahl der sichtbaren Symbole
+
+// Animation-Konstanten - optimiert für flüssigere Animationen
+const MAX_SPEED = 40; // Erhöhte Maximalgeschwindigkeit für flüssigere Animation
+const ACCELERATION = 0.5; // Schnellere Beschleunigung
+const DECELERATION_FACTOR = 0.95; // Schnelleres Abbremsen (war 0.97)
+const TARGETED_STOP_ANTICIPATION_SPINS = 1.0; // Reduzierte "Extra"-Umdrehungen vor dem Zielstopp
+const MIN_SPEED_NEAR_TARGET = 1.0; // Erhöhte Mindestgeschwindigkeit nahe dem Ziel
+const VERY_MIN_SPEED = 0.5; // Erhöhte sehr niedrige Geschwindigkeit
 
 // Helper function to initialize the reel strip
 const initializeReelStrip = (): Symbol[] => {
@@ -57,7 +59,9 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
   const targetScrollPositionRef = useRef<number | null>(null); // For targeted stopping
   const latestStripScrollPositionRef = useRef(stripScrollPosition);
   const latestIsAnimatingRef = useRef(isAnimating); // This one is sufficient
+  const [imagesLoaded, setImagesLoaded] = useState(false); // Track image loading status
 
+  // Effekt zum Aktualisieren der Refs
   useEffect(() => {
     latestStripScrollPositionRef.current = stripScrollPosition;
   }, [stripScrollPosition]);
@@ -65,6 +69,44 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
   useEffect(() => {
     latestIsAnimatingRef.current = isAnimating;
   }, [isAnimating]);
+  
+  // Neuer Effekt zum Vorladen der Bilder
+  useEffect(() => {
+    // Keine Vorladung notwendig, wenn bereits geladen
+    if (imagesLoaded || reelStrip.length === 0) return;
+    
+    let loadedCount = 0;
+    const totalImages = reelStrip.length;
+    
+    // Bild-Lade-Status-Tracker
+    const imageLoadTracker = () => {
+      loadedCount++;
+      if (loadedCount >= totalImages) {
+        console.log(`Reel ${reelId}: Alle Bilder erfolgreich geladen`);
+        setImagesLoaded(true);
+      }
+    };
+    
+    // Bilder vorladen
+    const preloadImages = reelStrip.map(symbol => {
+      const img = new window.Image();
+      img.src = symbol.image;
+      img.onload = imageLoadTracker;
+      img.onerror = () => {
+        console.error(`Fehler beim Laden des Bildes ${symbol.image}`);
+        imageLoadTracker(); // Trotzdem als "geladen" zählen, um nicht zu blockieren
+      };
+      return img;
+    });
+    
+    // Aufräumen beim Unmount
+    return () => {
+      preloadImages.forEach(img => {
+        img.onload = null;
+        img.onerror = null;
+      });
+    };
+  }, [reelStrip, reelId, imagesLoaded]);
 
   // Animation loop for scrolling the strip
   useEffect(() => {
@@ -245,60 +287,70 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
 
   useImperativeHandle(ref, () => ({
     startSpinning: (finalSymbolsForReels: Symbol[]) => {
+      // 1. Sicherstellen, dass es Symbole gibt und die Bilder geladen sind
       if (reelStrip.length === 0) {
-        console.error(`Reel ${reelId}: reelStrip is empty, cannot start spinning.`);
+        console.error(`Reel ${reelId}: reelStrip ist leer, kann nicht drehen.`);
+        return;
+      }
+      
+      // Wenn Bilder noch nicht geladen sind, kurz warten und erneut versuchen
+      if (!imagesLoaded) {
+        console.log(`Reel ${reelId}: Warte auf Bildladung vor dem Start...`);
+        // Statt rekursiven Aufruf setzen wir einfach einen Timer, der erneut prüft
+        window.setTimeout(() => {
+          // Starte die Animation trotzdem
+          if (finalSymbolsForReels) {
+            // Ziel setzen und Animation starten auch wenn nicht alle Bilder geladen sind
+            const specificFinalSymbol = finalSymbolsForReels[reelId];
+            if (specificFinalSymbol) {
+              targetScrollPositionRef.current = calculateStopPositionForSymbol(specificFinalSymbol) || 
+                                               calculateRandomStopPosition();
+            } else {
+              targetScrollPositionRef.current = calculateRandomStopPosition();
+            }
+            setIsAnimating(true);
+          }
+        }, 100);
         return;
       }
 
       const specificFinalSymbol = finalSymbolsForReels[reelId];
+      
+      // 2. Optimiertes Logging (reduziert)
+      console.log(`Reel ${reelId}: Start Drehen für Symbol: ${specificFinalSymbol?.name || 'Random'}`);
 
-      console.log(`Reel ${reelId}: ----- startSpinning Diagnostic -----`);
-      console.log(`Reel ${reelId}: Received specificFinalSymbol JSON:`, JSON.stringify(specificFinalSymbol));
-      if (reelStrip && reelStrip.length > 0) {
-        console.log(`Reel ${reelId}: Sample of reelStrip names (up to 5):`, reelStrip.slice(0, 5).map(s => s.name));
-      } else {
-        console.log(`Reel ${reelId}: reelStrip is empty or not yet initialized for logging sample names.`);
-      }
-      const nameToFindInStrip = specificFinalSymbol ? specificFinalSymbol.name : "N/A (specificFinalSymbol is null)";
-      console.log(`Reel ${reelId}: Name to find in reelStrip: "${nameToFindInStrip}"`);
-
+      // 3. Zielsymbol-Behandlung
       if (!specificFinalSymbol) {
-        console.error(`Reel ${reelId}: No specific final symbol found in the provided array.`);
-        console.log(`Reel ${reelId}: Target set to random: ${targetScrollPositionRef.current?.toFixed(2)}. Target set: false (no specific symbol)`);
+        // Bei fehlendem Zielsymbol auf zufälliges Symbol setzen
+        targetScrollPositionRef.current = calculateRandomStopPosition();
       } else {
-        console.log(`Reel ${reelId}: Imperative startSpinning. Seeking target name: "${specificFinalSymbol.name}" (ID: ${specificFinalSymbol.id}), Current pos: ${stripScrollPosition.toFixed(2)}`);
-        
+        // Symbol in der Rollenstreifen finden
         const targetSymbolIndex = reelStrip.findIndex(
-          (symbol) => symbol.name === specificFinalSymbol.name // Match by NAME
+          (symbol) => symbol.id === specificFinalSymbol.id // Nach ID statt Name vergleichen (eindeutiger)
         );
-
-        console.log(`Reel ${reelId}: Result of findIndex for "${nameToFindInStrip}" (which is specificFinalSymbol.name): ${targetSymbolIndex}`);
 
         if (targetSymbolIndex !== -1) {
           targetScrollPositionRef.current = calculateStopPositionForSymbol(specificFinalSymbol);
-
-          if (targetScrollPositionRef.current !== null) {
-            console.log(`Reel ${reelId}: Target "${specificFinalSymbol.name}" FOUND at index ${targetSymbolIndex}. Target scroll pos: ${targetScrollPositionRef.current.toFixed(2)}. Target set: true (using specific calculation)`);
-          } else {
-             console.warn(`Reel ${reelId}: Target "${specificFinalSymbol.name}" was found, but calculateStopPositionForSymbol returned null. Defaulting to random. Target set: false`);
+          if (!targetScrollPositionRef.current) {
             targetScrollPositionRef.current = calculateRandomStopPosition();
           }
         } else {
-          targetScrollPositionRef.current = calculateRandomStopPosition(); // Should not be reached if specificFinalSymbol is valid
-          console.warn(`Reel ${reelId}: Target symbol "${specificFinalSymbol.name}" (ID: "${specificFinalSymbol.id}") NOT FOUND in reelStrip (imperative). Defaulting to random stop. Target set: false`);
+          targetScrollPositionRef.current = calculateRandomStopPosition();
         }
       }
       
+      // 4. Animation starten - mit optimierter Geschwindigkeit für flachere Beschleunigungskurve
+      currentSpeedRef.current = MIN_SPEED_NEAR_TARGET; // Mit Grundgeschwindigkeit starten statt bei 0
+      
+      // 5. Mit Verzögerung starten (gestaffelt nach Rollennummer)
+      const actualDelay = delayStart + (reelId * 100); // Staffelung der Rollen
       window.setTimeout(() => {
         if (!latestIsAnimatingRef.current) {
-            console.log(`Reel ${reelId}: Timeout ended for imperative spin. Current isAnimating: ${latestIsAnimatingRef.current}. Setting isAnimating to true.`);
             setIsAnimating(true);
-        } else {
-            console.log(`Reel ${reelId}: Timeout ended for imperative spin. Animation was already in progress.`);
         }
-      }, delayStart);
+      }, actualDelay);
     }
-  }), [reelStrip, reelId, calculateRandomStopPosition, delayStart, stripScrollPosition, calculateStopPositionForSymbol]); // Added stripScrollPosition as it's used in logging
+  }), [reelStrip, reelId, calculateRandomStopPosition, delayStart, calculateStopPositionForSymbol, imagesLoaded]); // Unnötige stripScrollPosition-Abhängigkeit entfernt
 
   useEffect(() => {
     let startDelayTimer: number | undefined;

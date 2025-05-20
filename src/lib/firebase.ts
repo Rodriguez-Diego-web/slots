@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, FieldValue } from "firebase/firestore";
 import { getAnalytics, Analytics } from "firebase/analytics";
 import { Symbol } from './slotLogic';
@@ -121,14 +121,14 @@ export const saveUserWin = async (
 };
 
 // Funktionen für die Verwaltung von Gast-Spins über localStorage
-export const saveGuestSpinToLocalStorage = () => {
+const saveGuestSpinToLocalStorage = () => {
   const currentDate = getCurrentDateString();
   if (typeof window !== 'undefined') {
     localStorage.setItem('guestSpin', currentDate);
   }
 };
 
-export const checkGuestSpinStatus = () => {
+const checkGuestSpinStatus = () => {
   if (typeof window !== 'undefined') {
     const lastSpinDate = localStorage.getItem('guestSpin');
     const currentDate = getCurrentDateString();
@@ -137,9 +137,51 @@ export const checkGuestSpinStatus = () => {
   return false;
 };
 
-export const clearGuestSpinFromLocalStorage = () => {
+const clearGuestSpinFromLocalStorage = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('guestSpin');
+  }
+};
+
+// E-Mail/Passwort-Authentifizierungsfunktionen
+const registerWithEmail = async (email: string, password: string): Promise<User> => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // Neuen Benutzer initialisieren
+    await initializeOrResetSpins(userCredential.user.uid);
+    return userCredential.user;
+  } catch (error: unknown) {
+    console.error('Fehler bei der Registrierung:', error);
+    if (error instanceof Error) {
+      throw new Error(error.message);
+    }
+    throw new Error('Registrierung fehlgeschlagen');
+  }
+};
+
+const loginWithEmail = async (email: string, password: string): Promise<User> => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+  } catch (error: unknown) {
+    console.error('Fehler beim Login:', error);
+    if (error instanceof Error) {
+      throw new Error(error.message);
+    }
+    throw new Error('Login fehlgeschlagen');
+  }
+};
+
+const resetPassword = async (email: string): Promise<boolean> => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return true;
+  } catch (error: unknown) {
+    console.error('Fehler beim Zurücksetzen des Passworts:', error);
+    if (error instanceof Error) {
+      throw new Error(error.message);
+    }
+    throw new Error('Passwort-Reset fehlgeschlagen');
   }
 };
 
@@ -151,10 +193,19 @@ export {
   provider, 
   signInWithPopup, 
   signOut, 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   type User, 
   getUserProfile,
   initializeOrResetSpins,
   updateUserSpinsCount,
   getCurrentDateString,
-  DEFAULT_SPINS
+  DEFAULT_SPINS,
+  saveGuestSpinToLocalStorage,
+  checkGuestSpinStatus,
+  clearGuestSpinFromLocalStorage,
+  registerWithEmail,
+  loginWithEmail,
+  resetPassword
 };

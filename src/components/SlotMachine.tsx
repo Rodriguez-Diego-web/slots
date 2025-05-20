@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { loadSounds, playSpinSound, stopSpinSound } from '@/lib/sounds';
+import { loadSounds, playSpinSound, stopSpinSound, playWinSound, stopAllSounds } from '@/lib/sounds';
 import Reel, { ReelRefMethods } from './Reel';
 import Controls from './Controls';
 import WinPopup from './WinPopup';
@@ -31,7 +31,7 @@ const SlotMachine = () => {
   const [showWinPopup, setShowWinPopup] = useState(false);
   const [winningWord, setWinningWord] = useState<string | null>(null);
 
-  const { currentUser, isAuthLoading, signInWithGoogle } = useAuth();
+  const { currentUser, isAuthLoading } = useAuth();
 
   const completedReelsRef = useRef(0);
   const finalSymbolsRef = useRef(finalSymbols);
@@ -42,6 +42,13 @@ const SlotMachine = () => {
   useEffect(() => {
     finalSymbolsRef.current = finalSymbols;
   }, [finalSymbols]);
+
+  // Automatisch das Login-Modal schließen, wenn der Benutzer angemeldet ist
+  useEffect(() => {
+    if (currentUser && !isAuthLoading) {
+      setShowLoginPromptModal(false);
+    }
+  }, [currentUser, isAuthLoading]);
 
   // Sound beim ersten Laden initialisieren
   useEffect(() => {
@@ -167,11 +174,14 @@ const SlotMachine = () => {
         setWinAmount(winAmount);
         setWinningWord(winningWord);
         
-        // Zeige das Popup sofort mit einer kleinen Verzögerung
-        // damit die Animationen flüssig aussehen
+        // Spiele den Win-Sound ab
+        playWinSound();
+        
+        // Zeige das Popup erst nach einer längeren Verzögerung,
+        // damit der Spieler Zeit hat, den Gewinn zu sehen und sich zu freuen
         setTimeout(() => {
           setShowWinPopup(true);
-        }, 100);
+        }, 2500);
         
         // Speichere den Gewinn im Hintergrund (nicht blockierend)
         if (currentUser && winningWord) {
@@ -189,13 +199,10 @@ const SlotMachine = () => {
   }, [currentUser]);
 
   const handleCloseWinPopup = () => {
+    // Alle Sounds stoppen, wenn das Win-Popup geschlossen wird
+    stopAllSounds();
     setShowWinPopup(false);
     setWinningWord(null);
-  };
-
-  const handleSignInFromModal = async () => {
-    await signInWithGoogle();
-    setShowLoginPromptModal(false);
   };
 
   if (isAuthLoading) {
@@ -215,7 +222,6 @@ const SlotMachine = () => {
       {showLoginPromptModal && (
         <LoginPromptModal 
           onClose={() => setShowLoginPromptModal(false)} 
-          onSignIn={handleSignInFromModal} 
         />
       )}
 
