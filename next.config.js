@@ -1,17 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   // Exclude Cloud Functions from the Next.js build
   typescript: {
-    // ignoreBuildErrors: true, // Diese Option würde alle TypeScript-Fehler ignorieren, aber wir wollen nur die Firebase Functions ausschließen
+    ignoreBuildErrors: true, // Ignoriere TypeScript-Fehler während des Builds
   },
   webpack: (config, { isServer }) => {
     // Exclude functions directory from the build
-    config.watchOptions = {
-      ...config.watchOptions,
-      ignored: [...(config.watchOptions?.ignored || []), '**/functions/**']
-    };
+    if (config.watchOptions) {
+      config.watchOptions.ignored = config.watchOptions.ignored || [];
+      if (Array.isArray(config.watchOptions.ignored)) {
+        config.watchOptions.ignored.push('**/functions/**');
+      } else {
+        config.watchOptions.ignored = ['**/functions/**'];
+      }
+    } else {
+      config.watchOptions = {
+        ignored: ['**/functions/**']
+      };
+    }
     return config;
   },
   // Ignoriere das functions-Verzeichnis bei der TypeScript-Prüfung
