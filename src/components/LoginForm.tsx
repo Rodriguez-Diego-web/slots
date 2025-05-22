@@ -61,7 +61,7 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500 text-white bg-gray-800"
                   required
                 />
               </div>
@@ -71,7 +71,7 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500 text-white bg-gray-800"
                   required
                 />
               </div>
@@ -148,7 +148,7 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500 text-white bg-gray-800"
                   required
                 />
               </div>
@@ -158,7 +158,7 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500 text-white bg-gray-800"
                   required
                 />
               </div>
@@ -214,7 +214,7 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500 text-white bg-gray-800"
                       required
                     />
                   </div>
