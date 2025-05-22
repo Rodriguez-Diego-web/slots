@@ -142,7 +142,7 @@ export function spin(): SpinResult {
   // The current gamesSinceWin is calculated once at the start, which is correct.
   if (gamesSinceWin > JACKPOT_MIN_GAMES) { 
     // Very small chance of jackpot
-    if (Math.random() < 0.00005 * (gamesSinceWin / JACKPOT_MIN_GAMES)) { // Reduzierte Jackpot-Wahrscheinlichkeit (1/10 der ursprünglichen)
+    if (Math.random() < 0.000001 * (gamesSinceWin / JACKPOT_MIN_GAMES)) { // Extrem reduzierte Jackpot-Wahrscheinlichkeit (praktisch nie)
       const jackpotSymbol = symbols.find(s => s.id === 'seven')!;
       if (resultSymbols[0].id !== jackpotSymbol.id || resultSymbols[1].id !== jackpotSymbol.id || resultSymbols[2].id !== jackpotSymbol.id) {
         // Only force jackpot if a medium win wasn't already forced to be a jackpot (unlikely, but safe check)
