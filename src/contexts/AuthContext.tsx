@@ -11,7 +11,9 @@ import {
   initializeOrResetSpins,
   loginWithEmail,
   registerWithEmail,
-  resetPassword
+  resetPassword,
+  sendVerificationEmail,
+  checkEmailVerification
 } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
@@ -20,12 +22,16 @@ interface AuthContextType {
   currentUser: User | null;
   isAuthLoading: boolean;
   isAdmin: boolean;
+  isEmailVerified: boolean;
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<boolean>;
+  resendVerificationEmail: () => Promise<boolean>;
+  checkVerificationStatus: () => Promise<boolean>;
   authError: string | null;
+  emailNeedsVerification: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +41,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [emailNeedsVerification, setEmailNeedsVerification] = useState(false);
 
   // Funktion zum Prüfen der Admin-Rolle eines Benutzers
   const checkAdminStatus = async (userId: string) => {
@@ -67,11 +75,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const adminStatus = await checkAdminStatus(user.uid);
         setIsAdmin(adminStatus);
         
+        // E-Mail-Verifizierungsstatus setzen
+        setIsEmailVerified(user.emailVerified);
+        setEmailNeedsVerification(!user.emailVerified);
+        
         setCurrentUser(user);
       } else {
         // User is signed out
         setCurrentUser(null);
         setIsAdmin(false);
+        setIsEmailVerified(false);
+        setEmailNeedsVerification(false);
       }
       setIsAuthLoading(false);
     });
@@ -163,16 +177,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const resendVerificationEmail = async (): Promise<boolean> => {
+    try {
+      setAuthError(null);
+      if (!currentUser) {
+        throw new Error('Kein Benutzer angemeldet');
+      }
+      
+      await sendVerificationEmail(currentUser);
+      return true;
+    } catch (error) {
+      console.error('Fehler beim erneuten Senden der Bestätigungsmail:', error);
+      if (error instanceof Error) {
+        setAuthError(error.message);
+      } else {
+        setAuthError('Fehler beim Senden der Bestätigungsmail');
+      }
+      return false;
+    }
+  };
+
+  const checkVerificationStatus = async (): Promise<boolean> => {
+    try {
+      if (!currentUser) {
+        return false;
+      }
+      
+      const isVerified = await checkEmailVerification(currentUser);
+      setIsEmailVerified(isVerified);
+      setEmailNeedsVerification(!isVerified);
+      return isVerified;
+    } catch (error) {
+      console.error('Fehler beim Überprüfen des Verifizierungsstatus:', error);
+      return false;
+    }
+  };
+
   const contextValue = {
     currentUser,
     isAuthLoading,
     isAdmin,
+    isEmailVerified,
     signInWithGoogle,
     signOutUser,
     signInWithEmail,
     signUpWithEmail,
     sendPasswordResetEmail,
-    authError
+    resendVerificationEmail,
+    checkVerificationStatus,
+    authError,
+    emailNeedsVerification
   };
 
   return (

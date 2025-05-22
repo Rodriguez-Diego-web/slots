@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, FieldValue, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { getAnalytics, Analytics } from "firebase/analytics";
 import { SlotSymbol } from './slotLogic';
@@ -206,41 +206,73 @@ const clearGuestSpinFromLocalStorage = () => {
 const registerWithEmail = async (email: string, password: string): Promise<User> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    // Neuen Benutzer initialisieren
-    await initializeOrResetSpins(userCredential.user.uid);
-    return userCredential.user;
-  } catch (error: unknown) {
-    console.error('Fehler bei der Registrierung:', error);
-    if (error instanceof Error) {
-      throw new Error(error.message);
-    }
-    throw new Error('Registrierung fehlgeschlagen');
+    const user = userCredential.user;
+    
+    // Bestätigungs-E-Mail senden
+    await sendEmailVerification(user);
+    console.log('Bestätigungs-E-Mail wurde gesendet an:', email);
+    
+    return user;
+  } catch (error) {
+    console.error("Fehler bei der Registrierung:", error);
+    throw error; // Fehler weitergeben für besseres Error-Handling
   }
 };
 
 const loginWithEmail = async (email: string, password: string): Promise<User> => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
-  } catch (error: unknown) {
-    console.error('Fehler beim Login:', error);
-    if (error instanceof Error) {
-      throw new Error(error.message);
+    const user = userCredential.user;
+    
+    // Überprüfen, ob die E-Mail bestätigt wurde
+    if (!user.emailVerified) {
+      // Wenn die E-Mail nicht bestätigt wurde, erneut eine Bestätigungs-E-Mail senden
+      await sendEmailVerification(user);
+      throw new Error("E-Mail-Adresse nicht bestätigt. Eine neue Bestätigungs-E-Mail wurde gesendet.");
     }
-    throw new Error('Login fehlgeschlagen');
+    
+    return user;
+  } catch (error) {
+    console.error("Fehler bei der Anmeldung:", error);
+    throw error; // Fehler weitergeben für besseres Error-Handling
   }
 };
 
 const resetPassword = async (email: string): Promise<boolean> => {
   try {
-    await sendPasswordResetEmail(auth, email);
+    await sendPasswordResetEmail(auth, email, {
+      url: window.location.origin, // Fügt die aktuelle Domain als Rückkehr-URL hinzu
+      handleCodeInApp: false // Für Standard-E-Mail-Handling
+    });
+    console.log('Passwort-Zurücksetzen-E-Mail wurde gesendet an:', email);
     return true;
-  } catch (error: unknown) {
-    console.error('Fehler beim Zurücksetzen des Passworts:', error);
-    if (error instanceof Error) {
-      throw new Error(error.message);
-    }
-    throw new Error('Passwort-Reset fehlgeschlagen');
+  } catch (error) {
+    console.error("Fehler beim Zurücksetzen des Passworts:", error);
+    throw error; // Fehler weitergeben für besseres Error-Handling
+  }
+};
+
+// Funktion zum erneuten Senden der Bestätigungs-E-Mail
+const sendVerificationEmail = async (user: User): Promise<boolean> => {
+  try {
+    await sendEmailVerification(user);
+    console.log('Bestätigungs-E-Mail wurde erneut gesendet');
+    return true;
+  } catch (error) {
+    console.error("Fehler beim Senden der Bestätigungs-E-Mail:", error);
+    throw error;
+  }
+};
+
+// Funktion zum Überprüfen, ob die E-Mail-Adresse bestätigt wurde
+const checkEmailVerification = async (user: User): Promise<boolean> => {
+  try {
+    // Force-Reload des User-Objekts, um den aktuellen Status zu erhalten
+    await user.reload();
+    return user.emailVerified;
+  } catch (error) {
+    console.error("Fehler beim Überprüfen des E-Mail-Status:", error);
+    return false;
   }
 };
 
@@ -266,5 +298,7 @@ export {
   clearGuestSpinFromLocalStorage,
   registerWithEmail,
   loginWithEmail,
-  resetPassword
+  resetPassword,
+  sendVerificationEmail,
+  checkEmailVerification
 };

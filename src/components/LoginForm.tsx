@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 enum AuthMode {
   LOGIN = 'login',
   REGISTER = 'register',
-  RESET_PASSWORD = 'reset'
+  RESET_PASSWORD = 'reset',
+  VERIFY_EMAIL = 'verify'
 }
 
 interface LoginFormProps {
@@ -18,8 +19,18 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<AuthMode>(AuthMode.LOGIN);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [verificationEmailSent, setVerificationEmailSent] = useState(false);
   
-  const { currentUser, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordResetEmail, authError, isAuthLoading } = useAuth();
+  const { 
+    currentUser, 
+    signInWithGoogle, 
+    signInWithEmail, 
+    signUpWithEmail, 
+    sendPasswordResetEmail, 
+    resendVerificationEmail,
+    authError, 
+    isAuthLoading 
+  } = useAuth();
   
   // Überwache Änderungen am Authentication-Status
   useEffect(() => {
@@ -27,7 +38,12 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
     if (currentUser && !isAuthLoading && onLoginSuccess) {
       onLoginSuccess();
     }
-  }, [currentUser, isAuthLoading, onLoginSuccess]);
+    
+    // Bei Login-Fehler prüfen, ob der Benutzer zur E-Mail-Verifizierungsansicht wechseln muss
+    if (authError && authError.includes('E-Mail-Adresse nicht bestätigt')) {
+      setMode(AuthMode.VERIFY_EMAIL);
+    }
+  }, [currentUser, isAuthLoading, onLoginSuccess, authError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,16 +51,30 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
     try {
       if (mode === AuthMode.LOGIN) {
         await signInWithEmail(email, password);
+        // Nach erfolgreicher Anmeldung wird der Verifizierungsstatus automatisch im AuthContext geprüft
       } else if (mode === AuthMode.REGISTER) {
         await signUpWithEmail(email, password);
+        // Nach erfolgreicher Registrierung zur Email-Verifizierungsansicht wechseln
+        setMode(AuthMode.VERIFY_EMAIL);
+        setVerificationEmailSent(true);
       } else if (mode === AuthMode.RESET_PASSWORD) {
         const success = await sendPasswordResetEmail(email);
         if (success) {
           setResetEmailSent(true);
         }
+      } else if (mode === AuthMode.VERIFY_EMAIL && currentUser) {
+        const success = await resendVerificationEmail();
+        if (success) {
+          setVerificationEmailSent(true);
+        }
       }
     } catch (error) {
       console.error('Login/Registration error:', error);
+      // Wenn es ein Fehler wegen nicht verifizierter E-Mail ist, zur Verifizierungsansicht wechseln
+      if (error instanceof Error && 
+          error.message.includes('E-Mail-Adresse nicht bestätigt')) {
+        setMode(AuthMode.VERIFY_EMAIL);
+      }
     }
   };
 
@@ -229,6 +259,76 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
                     </button>
                   </div>
                 </form>
+                
+                {authError && (
+                  <div className="text-red-500 mt-2 text-sm bg-red-100 p-2 rounded border border-red-200">
+                    {authError}
+                  </div>
+                )}
+                
+                <div className="mt-4">
+                  <button 
+                    onClick={() => setMode(AuthMode.LOGIN)}
+                    className="text-orange-400 hover:text-orange-500 text-sm"
+                  >
+                    Zurück zum Login
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        );
+        
+      case AuthMode.VERIFY_EMAIL:
+        return (
+          <>
+            <h2 className="text-2xl font-bold mb-6 text-center text-white">E-Mail-Adresse bestätigen</h2>
+            
+            {verificationEmailSent ? (
+              <div className="text-center">
+                <p className="text-white mb-4">
+                  Eine E-Mail mit Anweisungen zur Bestätigung deiner E-Mail-Adresse wurde an {email} gesendet.
+                </p>
+                <button 
+                  onClick={() => {
+                    setMode(AuthMode.LOGIN);
+                    setVerificationEmailSent(false);
+                  }}
+                  className="text-orange-400 hover:text-orange-500"
+                >
+                  Zurück zum Login
+                </button>
+              </div>
+            ) : (
+              <>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-white mb-2">Deine E-Mail Adresse</label>
+                    <input 
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-orange-500 text-white bg-gray-800"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <button 
+                      type="submit"
+                      disabled={isAuthLoading}
+                      className="w-full bg-orange-500 text-white py-2 px-4 rounded-md hover:bg-orange-600 transition duration-300"
+                    >
+                      {isAuthLoading ? 'Wird gesendet...' : 'Bestätigungslink senden'}
+                    </button>
+                  </div>
+                </form>
+                
+                {authError && (
+                  <div className="text-red-500 mt-2 text-sm bg-red-100 p-2 rounded border border-red-200">
+                    {authError}
+                  </div>
+                )}
                 
                 <div className="mt-4">
                   <button 
