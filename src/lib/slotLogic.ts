@@ -13,7 +13,7 @@ export const symbols: SlotSymbol[] = [
     id: 'seven',
     name: '7',
     image: '/symbols/6.png',
-    weight: 1,    // ~2.5% (1/40)
+    weight: 1,    // Extrem selten (Original: 100, reduziert auf 1 für seltenere Jackpots)
     value: 100,
     winningWordForMatch: "JACKPOT!"
   },
@@ -126,8 +126,8 @@ export function spin(): SpinResult {
   
   // If we're due for a win, increase chances of matching symbols
   if (gamesSinceWin > CYCLE_LENGTH) {
-    // 20% chance for medium win after CYCLE_LENGTH games
-    if (Math.random() < 0.2 * (gamesSinceWin / CYCLE_LENGTH)) {
+    // Reduzierte Chance (5% statt 20%) für mittleren Gewinn nach CYCLE_LENGTH Spielen
+    if (Math.random() < 0.05 * (gamesSinceWin / CYCLE_LENGTH)) {
       const mediumWinSymbolCandidates = symbols.filter(s => s.value >= 5 && s.value < 50);
       const winningSymbol = mediumWinSymbolCandidates.length > 0 
                             ? mediumWinSymbolCandidates[Math.floor(Math.random() * mediumWinSymbolCandidates.length)] 
