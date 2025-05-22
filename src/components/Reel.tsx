@@ -2,15 +2,18 @@
 
 import { useEffect, useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Image from 'next/image';
-import { Symbol, symbols as allSymbolsFromLogic } from '@/lib/slotLogic'; // Import all symbols
+import { SlotSymbol, symbols as allSymbolsFromLogic } from '@/lib/slotLogic'; // Import all symbols
+
+// Typ-Alias, um bestehenden Code mit SlotSymbol kompatibel zu machen
+type Symbol = SlotSymbol;
 
 export interface ReelRefMethods {
-  startSpinning: (finalSymbolsForReels: Symbol[]) => void;
+  startSpinning: (finalSymbolsForReels: SlotSymbol[]) => void;
 }
 
 interface ReelProps {
   spinning: boolean;
-  finalSymbol: Symbol | null; // This might become less directly used if imperative startSpinning always provides target
+  finalSymbol: SlotSymbol | null; // This might become less directly used if imperative startSpinning always provides target
   onSpinComplete: () => void;
   delayStart?: number;
   reelId: number; // Add a unique ID for each reel for debugging/keying if needed
