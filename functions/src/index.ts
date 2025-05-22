@@ -1,4 +1,4 @@
-import * as logger from "firebase-functions/logger";
+import {logger} from "firebase-functions";
 import {onCall, HttpsError, CallableRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
