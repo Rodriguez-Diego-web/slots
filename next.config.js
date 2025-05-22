@@ -5,7 +5,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Ignoriere TypeScript-Fehler während des Builds
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     // Exclude functions directory from the build
     if (config.watchOptions) {
       config.watchOptions.ignored = config.watchOptions.ignored || [];
