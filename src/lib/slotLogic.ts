@@ -1,5 +1,5 @@
 // Constants and types for our slot machine
-export type Symbol = {
+export type SlotSymbol = {
   id: string;
   name: string;
   image: string;
@@ -8,12 +8,12 @@ export type Symbol = {
   winningWordForMatch?: string; // Word to display for a 3-of-a-kind win
 };
 
-export const symbols: Symbol[] = [
+export const symbols: SlotSymbol[] = [
   {
     id: 'seven',
     name: '7',
     image: '/symbols/6.png',
-    weight: 1,    // ~2.5% (1/40)
+    weight: 100,    // ~2.5% (1/40)
     value: 100,
     winningWordForMatch: "JACKPOT!"
   },
@@ -78,7 +78,7 @@ const JACKPOT_MIN_GAMES = 100; // Minimum games before jackpot possibility
 // Return to player is approximately 90% based on weights and payout structure
 
 // Get a random symbol based on its weight
-export function getRandomSymbol(): Symbol {
+export function getRandomSymbol(): SlotSymbol {
   const randNum = Math.random() * totalWeight;
   let weightSum = 0;
   
@@ -94,7 +94,7 @@ export function getRandomSymbol(): Symbol {
 }
 
 // Calculate win amount and winning word for a given result
-export function calculateWinDetails(resultSymbols: Symbol[]): { winAmount: number, winningWord: string | null } {
+export function calculateWinDetails(resultSymbols: SlotSymbol[]): { winAmount: number, winningWord: string | null } {
   // Only award wins for three of the same symbol
   if (resultSymbols[0].id === resultSymbols[1].id && resultSymbols[1].id === resultSymbols[2].id) {
     const winningSymbol = resultSymbols[0];
@@ -110,7 +110,7 @@ export function calculateWinDetails(resultSymbols: Symbol[]): { winAmount: numbe
 
 // Get results for one spin (3 reels), including win details
 export type SpinResult = {
-  symbols: Symbol[];
+  symbols: SlotSymbol[];
   winAmount: number;
   winningWord: string | null;
 };

@@ -1,9 +1,9 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, FieldValue } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, FieldValue, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { getAnalytics, Analytics } from "firebase/analytics";
-import { Symbol } from './slotLogic';
+import { SlotSymbol } from './slotLogic';
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -85,15 +85,66 @@ interface WinRecordData {
   timestamp: FieldValue;
   winAmount: number;
   winningWord: string | null;
-  symbols: Symbol[]; // Storing the array of symbol objects
+  symbols: SlotSymbol[]; // Storing the array of symbol objects
 }
+
+// Extended interface for win record including the win code
+interface WinRecordDataWithCode extends WinRecordData {
+  winCode: string;
+  codeFormat: string; // e.g., "XX9999"
+  isClaimed: boolean;
+  claimedAt?: Timestamp | null; // Timestamp when the code was claimed
+}
+
+const CODE_CHARSET_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const CODE_CHARSET_NUMBERS = "0123456789";
+const CODE_LENGTH_LETTERS = 2;
+const CODE_LENGTH_NUMBERS = 4;
+
+// Generates a random code in XX9999 format
+const generateRandomCode = (): string => {
+  let code = "";
+  for (let i = 0; i < CODE_LENGTH_LETTERS; i++) {
+    code += CODE_CHARSET_LETTERS.charAt(Math.floor(Math.random() * CODE_CHARSET_LETTERS.length));
+  }
+  for (let i = 0; i < CODE_LENGTH_NUMBERS; i++) {
+    code += CODE_CHARSET_NUMBERS.charAt(Math.floor(Math.random() * CODE_CHARSET_NUMBERS.length));
+  }
+  return code;
+};
+
+// Checks if a given win code is unique among unclaimed wins
+const isCodeUnique = async (code: string): Promise<boolean> => {
+  const q = query(collection(db, "userWins"), where("winCode", "==", code), where("isClaimed", "==", false));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.empty; // True if no documents found (code is unique for unclaimed wins)
+};
+
+// Generates a unique win code by repeatedly generating and checking
+const generateUniqueWinCode = async (): Promise<string> => {
+  let attempts = 0;
+  const MAX_ATTEMPTS = 10; // Safeguard against infinite loops if code space gets too full
+
+  while (attempts < MAX_ATTEMPTS) {
+    const newCode = generateRandomCode();
+    if (await isCodeUnique(newCode)) {
+      return newCode;
+    }
+    attempts++;
+  }
+  // Fallback or error handling if a unique code cannot be generated after MAX_ATTEMPTS
+  // This is unlikely with 6.76 million combinations but good practice
+  console.error("Failed to generate a unique win code after", MAX_ATTEMPTS, "attempts.");
+  // Consider throwing an error or returning a default/fallback or trying a different strategy
+  throw new Error("Could not generate a unique win code.");
+};
 
 export const saveUserWin = async (
   userId: string,
   winAmount: number,
   winningWord: string | null,
-  symbols: Symbol[] // The array of 3 symbols that formed the win
-) => {
+  symbols: SlotSymbol[] // The array of 3 symbols that formed the win
+): Promise<{winId: string, winCode: string} | undefined> => {
   if (!userId) {
     console.error("Cannot save win: No user ID provided.");
     return;
@@ -104,19 +155,27 @@ export const saveUserWin = async (
   }
 
   try {
-    const winData: WinRecordData = {
+    const uniqueWinCode = await generateUniqueWinCode();
+
+    const winData: WinRecordDataWithCode = {
       userId,
       timestamp: serverTimestamp(),
       winAmount,
       winningWord,
       symbols,
+      winCode: uniqueWinCode,
+      codeFormat: "XX9999",
+      isClaimed: false,
+      claimedAt: null, // Initially not claimed
     };
     const docRef = await addDoc(collection(db, "userWins"), winData);
-    console.log("Win recorded in Firestore with ID: ", docRef.id);
-    return docRef.id; // Optionally return the document ID
+    console.log("Win recorded in Firestore with ID: ", docRef.id, "and Code:", uniqueWinCode);
+    return { winId: docRef.id, winCode: uniqueWinCode };
   } catch (error) {
     console.error("Error saving user win to Firestore: ", error);
     // Consider more sophisticated error handling or re-throwing if needed
+    // If generateUniqueWinCode throws, it will be caught here.
+    throw error; // Re-throw the error so the caller can handle it
   }
 };
 

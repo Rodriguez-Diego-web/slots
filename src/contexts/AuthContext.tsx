@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   auth,
+  db,
   User, // Firebase User type
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -12,11 +13,13 @@ import {
   registerWithEmail,
   resetPassword
 } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
 
 interface AuthContextType {
   currentUser: User | null;
   isAuthLoading: boolean;
+  isAdmin: boolean;
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -31,6 +34,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Funktion zum Prüfen der Admin-Rolle eines Benutzers
+  const checkAdminStatus = async (userId: string) => {
+    try {
+      const userDocRef = doc(db, 'userProfiles', userId);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        return userData.role === 'admin';
+      }
+      return false;
+    } catch (error) {
+      console.error('Fehler beim Prüfen des Admin-Status:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -41,10 +62,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // New user, initialize spins etc.
           await initializeOrResetSpins(user.uid);
         }
+        
+        // Admin-Status prüfen
+        const adminStatus = await checkAdminStatus(user.uid);
+        setIsAdmin(adminStatus);
+        
         setCurrentUser(user);
       } else {
         // User is signed out
         setCurrentUser(null);
+        setIsAdmin(false);
       }
       setIsAuthLoading(false);
     });
@@ -136,17 +163,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const contextValue = {
+    currentUser,
+    isAuthLoading,
+    isAdmin,
+    signInWithGoogle,
+    signOutUser,
+    signInWithEmail,
+    signUpWithEmail,
+    sendPasswordResetEmail,
+    authError
+  };
+
   return (
-    <AuthContext.Provider value={{
-      currentUser,
-      isAuthLoading,
-      signInWithGoogle,
-      signOutUser,
-      signInWithEmail,
-      signUpWithEmail,
-      sendPasswordResetEmail,
-      authError
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

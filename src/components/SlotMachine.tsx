@@ -7,7 +7,7 @@ import Controls from './Controls';
 import WinPopup from './WinPopup';
 import LoginPromptModal from './LoginPromptModal';
 import OutOfSpinsModal from './OutOfSpinsModal';
-import { spin, Symbol, SpinResult } from '@/lib/slotLogic';
+import { spin, SlotSymbol, SpinResult } from '@/lib/slotLogic';
 import { 
   getUserProfile, 
   initializeOrResetSpins, 
@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const SlotMachine = () => {
   const [spinning, setSpinning] = useState(false);
-  const [finalSymbols, setFinalSymbols] = useState<Symbol[]>([]);
+  const [finalSymbols, setFinalSymbols] = useState<SlotSymbol[]>([]);
   const [winAmount, setWinAmount] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState(1);
   const [guestSpinUsed, setGuestSpinUsed] = useState(false);
@@ -30,11 +30,12 @@ const SlotMachine = () => {
   const [showOutOfSpinsModal, setShowOutOfSpinsModal] = useState(false);
   const [showWinPopup, setShowWinPopup] = useState(false);
   const [winningWord, setWinningWord] = useState<string | null>(null);
+  const [displayedWinCode, setDisplayedWinCode] = useState<string | null>(null);
 
   const { currentUser, isAuthLoading } = useAuth();
 
   const completedReelsRef = useRef(0);
-  const finalSymbolsRef = useRef(finalSymbols);
+  const finalSymbolsRef = useRef<SlotSymbol[]>(finalSymbols);
   const reelRefs = useRef<(ReelRefMethods | null)[]>([]);
   const latestWinAmountRef = useRef(0);
   const latestWinningWordRef = useRef<string | null>(null);
@@ -54,7 +55,7 @@ const SlotMachine = () => {
   useEffect(() => {
     loadSounds().catch(console.error);
     
-    // Aufräumen beim Komponenten-Abbau
+    // Aufräumfunktion für den Sound zurückgeben
     return () => {
       stopSpinSound();
     };
@@ -136,6 +137,7 @@ const SlotMachine = () => {
     setWinAmount(0);
     setWinningWord(null);
     setShowWinPopup(false);
+    setDisplayedWinCode(null);
     completedReelsRef.current = 0;
     
     // Spin-Ergebnis generieren
@@ -190,8 +192,14 @@ const SlotMachine = () => {
             winAmount, 
             winningWord,
             finalSymbolsRef.current
-          ).catch(error => {
+          ).then(result => {
+            if (result && result.winCode) {
+              setDisplayedWinCode(result.winCode);
+              console.log('Win saved, code to display:', result.winCode);
+            }
+          }).catch(error => {
             console.error('Error saving win to Firebase:', error);
+            // Optional: Handle error, e.g., by not showing a code or showing an error message
           });
         }
       }
@@ -211,11 +219,13 @@ const SlotMachine = () => {
 
   return (
     <div className="flex flex-col items-center w-full max-w-md mx-auto">
-      {showWinPopup && winningWord && (
+      {showWinPopup && (
         <WinPopup 
           winAmount={winAmount} 
           winningWord={winningWord} 
           onClose={handleCloseWinPopup} 
+          symbols={finalSymbolsRef.current} 
+          winCode={displayedWinCode} 
         />
       )}
 

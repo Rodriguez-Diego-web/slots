@@ -52,6 +52,9 @@ const Header = () => {
           <Link href="/info" className="text-white hover:text-yellow-400 transition-colors">INFOS</Link>
           <Link href="/agb" className="text-white hover:text-yellow-400 transition-colors">AGB</Link>
           <Link href="/kontakt" className="text-white hover:text-yellow-400 transition-colors">KONTAKT</Link>
+          {currentUser && (
+            <Link href="/admin" className="text-white hover:text-yellow-400 transition-colors font-bold">ADMIN</Link>
+          )}
           {isAuthLoading ? (
             <div className="text-white">...</div>
           ) : currentUser ? (
@@ -84,6 +87,9 @@ const Header = () => {
           <Link href="/info" onClick={() => setMenuOpen(false)} className="text-3xl text-white hover:text-yellow-400 transition-colors">INFOS</Link>
           <Link href="/agb" onClick={closeMenu} className="text-3xl text-white hover:text-yellow-400 transition-colors">AGB</Link>
           <Link href="/kontakt" onClick={closeMenu} className="text-3xl text-white hover:text-yellow-400 transition-colors">KONTAKT</Link>
+          {currentUser && (
+            <Link href="/admin" onClick={closeMenu} className="text-3xl text-white hover:text-yellow-400 transition-colors font-bold">ADMIN</Link>
+          )}
           
           <hr className="w-2/3 border-gray-700 my-6" />
 

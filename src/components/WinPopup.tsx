@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
 import dynamic from 'next/dynamic';
+import { SlotSymbol } from '../lib/slotLogic';
 
 // Dynamischer Import für Confetti, um SSR-Probleme zu vermeiden
 const ReactConfetti = dynamic(() => import('react-confetti'), {
@@ -13,9 +13,11 @@ interface WinPopupProps {
   winningWord: string | null;
   winAmount: number;
   onClose: () => void;
+  winCode: string | null;
+  symbols?: SlotSymbol[];
 }
 
-const WinPopup: React.FC<WinPopupProps> = ({ winningWord, onClose }) => {
+const WinPopup: React.FC<WinPopupProps> = ({ winningWord, winCode, onClose }) => {
   const [dimensions, setDimensions] = useState({ 
     width: typeof window !== 'undefined' ? window.innerWidth : 0, 
     height: typeof window !== 'undefined' ? window.innerHeight : 0 
@@ -61,10 +63,16 @@ const WinPopup: React.FC<WinPopupProps> = ({ winningWord, onClose }) => {
           <p className="text-white text-xl mb-2">Du hast gewonnen:</p>
           <p className="text-yellow-500 text-5xl md:text-6xl font-bold mb-6">{winningWord}</p>
           
-          <p className="text-white text-md mb-3">Scanne diesen QR-Code, um deinen Gewinn abzuholen:</p>
-          <div className="mb-6 p-2 bg-white inline-block rounded-lg border-4 border-yellow-400">
-            <QRCodeCanvas value={winningWord} size={160} bgColor="#ffffff" fgColor="#000000" level="H" />
-          </div>
+          {winCode ? (
+            <>
+              <p className="text-white text-md mb-2">Dein Gewinncode zum Abholen:</p>
+              <div className="mb-6 p-3 bg-gray-700 inline-block rounded-lg border-2 border-yellow-400">
+                <p className="text-yellow-400 text-4xl font-mono tracking-widest font-bold">{winCode}</p>
+              </div>
+            </>
+          ) : (
+            <p className="text-red-500 text-md mb-6">Gewinncode wird generiert...</p>
+          )}
           
           <button 
             onClick={onClose}
