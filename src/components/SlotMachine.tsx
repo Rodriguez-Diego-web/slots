@@ -37,6 +37,7 @@ const SlotMachine = () => {
   const { currentUser, isAuthLoading } = useAuth();
 
   const completedReelsRef = useRef(0);
+  const currentSpinIdRef = useRef(0); // NEU: Ref für die aktuelle Spin-ID
   const finalSymbolsRef = useRef<SlotSymbol[]>(finalSymbols);
   const reelRefs = useRef<(ReelRefMethods | null)[]>([]);
   const latestWinAmountRef = useRef(0);
@@ -109,7 +110,9 @@ const SlotMachine = () => {
     // Spinning-Status setzen, bevor irgendwelche anderen Prüfungen durchgeführt werden
     isSpinningRef.current = true;
     setSpinning(true);
-    
+    currentSpinIdRef.current += 1; // NEU: Spin-ID für diesen Spin erhöhen
+    const newSpinId = currentSpinIdRef.current; // NEU: Aktuelle Spin-ID für diesen Durchlauf speichern
+
     // User ohne Anmeldung kann nur einmal drehen
     if (!currentUser && guestSpinUsed) {
       setShowLoginPromptModal(true);
@@ -148,7 +151,7 @@ const SlotMachine = () => {
     }
 
     // Spin-Sound abspielen
-    const stopSound = playSpinSound();
+    playSpinSound();
     
     // Zustand zurücksetzen
     setWinAmount(0);
@@ -167,91 +170,70 @@ const SlotMachine = () => {
     latestWinningWordRef.current = spinResult.winningWord;
     
     // Rollen drehen
-    reelRefs.current.forEach(reel => reel?.startSpinning(spinResult.symbols));
-    
-    // Aufräumfunktion für den Sound zurückgeben
-    return stopSound;
+    reelRefs.current.forEach((reel) => { // Geändert: 'index' entfernt
+      if (reel) {
+        // Übergebe die finalen Symbole und die aktuelle Spin-ID an jede Walze
+        reel.startSpinning(spinResult.symbols, newSpinId); // NEU: newSpinId übergeben
+      }
+    });
   }, [spinning, currentUser, guestSpinUsed, isAuthLoading, attemptsLeft]);
 
-  const handleReelComplete = useCallback(() => {
-    completedReelsRef.current += 1;
-    
-    // Alle drei Walzen sind fertig
-    if (completedReelsRef.current >= 3) {
-      const winAmount = latestWinAmountRef.current;
-      setWinAmount(winAmount);
-      setWinningWord(latestWinningWordRef.current);
-      
-      // Timer für Gewinn-Popup und Sound
-      if (winAmount > 0) {
-        // Prüfen, ob der Gewinn bereits gespeichert wurde, um Duplikate zu vermeiden
-        if (isWinSaved.current) {
-          console.log('Gewinn wurde bereits gespeichert, kein erneutes Speichern');
-          return;
-        }
-        
-        playWinSound(true);
-        isWinSaved.current = true; // Markieren, dass der Gewinn gespeichert wird
+  const handleReelComplete = useCallback(async (reelId: number, spinId: number) => { // NEU: spinId als Parameter
+    // Nur fortfahren, wenn die spinId mit der aktuellen Spin-ID übereinstimmt
+    if (spinId !== currentSpinIdRef.current) {
+      console.log(`Reel ${reelId} completed for an old spin (spinId: ${spinId}, currentSpinId: ${currentSpinIdRef.current}). Ignoring.`);
+      return;
+    }
 
-        // Gewinncode speichern und anzeigen
-        if (currentUser) {
-          // Gewinn in Firebase speichern (nur einmal)
-          saveUserWin(
-            currentUser.uid,
-            winAmount,
-            latestWinningWordRef.current,
-            finalSymbolsRef.current
-          ).then(winData => {
-            if (winData && winData.winCode) {
-              setDisplayedWinCode(winData.winCode);
-            }
-            // Gewinn-Popup anzeigen
-            setShowWinPopup(true);
-            
-            // Nach einer kurzen Verzögerung den Spinning-Status zurücksetzen,
-            // damit die Benutzer genug Zeit haben, das Ergebnis zu sehen
-            setTimeout(() => {
-              // Spin-Sound stoppen, wenn der Gewinn angezeigt wird
-              stopSpinSound();
-              setSpinning(false);
-              isSpinningRef.current = false;
-            }, 500);
-          }).catch(error => {
-            console.error('Fehler beim Speichern des Gewinns:', error);
-            // Trotzdem Popup zeigen, auch wenn Speichern fehlschlug
-            setShowWinPopup(true);
-            
-            // Auch bei Fehlern den Spinning-Status zurücksetzen
-            setTimeout(() => {
-              // Spin-Sound stoppen, auch bei Fehlern
-              stopSpinSound();
-              setSpinning(false);
-              isSpinningRef.current = false;
-            }, 500);
-          });
-        } else {
-          // Auch für Gäste das Gewinn-Popup zeigen
+    completedReelsRef.current += 1;
+
+    if (completedReelsRef.current === 3) {
+      // Alle Walzen sind gestoppt
+      if (latestWinAmountRef.current > 0) {
+        playWinSound();
+
+        // Speichern des Gewinns in Firebase (nur wenn noch nicht gespeichert)
+        if (currentUser && !isWinSaved.current) {
+          saveUserWin(currentUser.uid, latestWinAmountRef.current, latestWinningWordRef.current || '', finalSymbolsRef.current)
+            .then(winData => { 
+              setDisplayedWinCode(winData ? winData.winCode : null); 
+              isWinSaved.current = true; 
+              // Verzögerung hinzufügen, bevor das Popup angezeigt wird, um den Walzen Zeit zum Stoppen zu geben
+              setTimeout(() => {
+                setShowWinPopup(true);
+                // Spin-Sound hier stoppen, da das Popup erscheint
+                stopSpinSound(); 
+              }, 500);
+            })
+            .catch(error => {
+              console.error('Fehler beim Speichern des Gewinns:', error);
+              // Fallback: Popup trotzdem anzeigen, aber ohne Code oder mit Fehlermeldung?
+              // Fürs Erste: Popup anzeigen, Spinning bleibt true.
+              setTimeout(() => {
+                setShowWinPopup(true);
+                stopSpinSound();
+              }, 500);
+            });
+        } else if (!currentUser && latestWinAmountRef.current > 0) { // Gast-Gewinn
+          // Für Gäste den Gewinn im LocalStorage speichern, falls noch nicht geschehen
+          if (!isWinSaved.current) {
+            saveGuestSpinToLocalStorage(); 
+            setGuestSpinUsed(true); // Gast-Spin als verbraucht markieren
+            isWinSaved.current = true;
+          }
           setTimeout(() => {
             setShowWinPopup(true);
-            
-            // Nach einer kurzen Verzögerung den Spinning-Status zurücksetzen
-            setTimeout(() => {
-              // Spin-Sound stoppen, wenn Popup für Gäste angezeigt wird
-              stopSpinSound();
-              setSpinning(false);
-              isSpinningRef.current = false;
-            }, 500);
+            stopSpinSound();
           }, 500);
         }
       } else {
         // Bei keinem Gewinn nach einer kurzen Verzögerung den Spinning-Status zurücksetzen,
         // damit die Benutzer genug Zeit haben, das Ergebnis zu sehen
         setTimeout(() => {
-          // Spin-Sound stoppen, wenn kein Gewinn vorliegt
           stopSpinSound();
           setSpinning(false);
           isSpinningRef.current = false;
-        }, 800);
+        }, 2500); // TEST: Erhöht von 1200ms auf 2500ms
       }
     }
   }, [currentUser]);
@@ -261,6 +243,11 @@ const SlotMachine = () => {
     stopAllSounds();
     setShowWinPopup(false);
     setWinningWord(null);
+    // Erst hier den Spinning-Status zurücksetzen, wenn ein Gewinn vorlag
+    if (latestWinAmountRef.current > 0) {
+      setSpinning(false);
+      isSpinningRef.current = false;
+    }
   };
 
   if (isAuthLoading) {

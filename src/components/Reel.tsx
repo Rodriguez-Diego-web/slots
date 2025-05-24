@@ -8,13 +8,13 @@ import { SlotSymbol, symbols as allSymbolsFromLogic } from '@/lib/slotLogic'; //
 type Symbol = SlotSymbol;
 
 export interface ReelRefMethods {
-  startSpinning: (finalSymbolsForReels: SlotSymbol[]) => void;
+  startSpinning: (finalSymbolsForReels: SlotSymbol[], spinId: number) => void;
 }
 
 interface ReelProps {
   spinning: boolean;
   finalSymbol: SlotSymbol | null; // This might become less directly used if imperative startSpinning always provides target
-  onSpinComplete: () => void;
+  onSpinComplete: (reelId: number, spinId: number) => void;
   delayStart?: number;
   reelId: number; // Add a unique ID for each reel for debugging/keying if needed
 }
@@ -63,6 +63,7 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
   const latestStripScrollPositionRef = useRef(stripScrollPosition);
   const latestIsAnimatingRef = useRef(isAnimating); // This one is sufficient
   const [imagesLoaded, setImagesLoaded] = useState(false); // Track image loading status
+  const currentAnimationSpinIdRef = useRef<number | null>(null); // Für die Spin ID der aktuellen Animation
 
   // Effekt zum Aktualisieren der Refs
   useEffect(() => {
@@ -155,7 +156,9 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
           setIsAnimating(false); // Stop animation flag
           currentSpeedRef.current = 0; // Reset speed
           targetScrollPositionRef.current = null; // Clear the target
-          onSpinComplete(); // Notify parent component
+          if (currentAnimationSpinIdRef.current !== null) { // Sicherstellen, dass eine ID vorhanden ist
+            onSpinComplete(reelId, currentAnimationSpinIdRef.current); // Geändert: reelId und spinId zurückgeben
+          }
           if (animationFrameIdRef.current) {
             cancelAnimationFrame(animationFrameIdRef.current);
             animationFrameIdRef.current = undefined; // Clear animation frame ID
@@ -289,7 +292,7 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
   }, [reelStrip, stripScrollPosition, calculateRandomStopPosition]);
 
   useImperativeHandle(ref, () => ({
-    startSpinning: (finalSymbolsForReels: Symbol[]) => {
+    startSpinning: (finalSymbolsForReels: Symbol[], spinId: number) => { // spinId als Parameter hinzugefügt
       // 1. Sicherstellen, dass es Symbole gibt und die Bilder geladen sind
       if (reelStrip.length === 0) {
         console.error(`Reel ${reelId}: reelStrip ist leer, kann nicht drehen.`);
@@ -317,23 +320,25 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
         return;
       }
 
-      const specificFinalSymbol = finalSymbolsForReels[reelId];
+      currentAnimationSpinIdRef.current = spinId; // NEU: Spin ID für diese Animation speichern
+
+      const reelSpecificFinalSymbol = finalSymbolsForReels[reelId];
       
       // 2. Optimiertes Logging (reduziert)
-      console.log(`Reel ${reelId}: Start Drehen für Symbol: ${specificFinalSymbol?.name || 'Random'}`);
+      console.log(`Reel ${reelId}: Start Drehen für Symbol: ${reelSpecificFinalSymbol?.name || 'Random'}`);
 
       // 3. Zielsymbol-Behandlung
-      if (!specificFinalSymbol) {
+      if (!reelSpecificFinalSymbol) {
         // Bei fehlendem Zielsymbol auf zufälliges Symbol setzen
         targetScrollPositionRef.current = calculateRandomStopPosition();
       } else {
         // Symbol in der Rollenstreifen finden
         const targetSymbolIndex = reelStrip.findIndex(
-          (symbol) => symbol.id === specificFinalSymbol.id // Nach ID statt Name vergleichen (eindeutiger)
+          (symbol) => symbol.id === reelSpecificFinalSymbol.id // Nach ID statt Name vergleichen (eindeutiger)
         );
 
         if (targetSymbolIndex !== -1) {
-          targetScrollPositionRef.current = calculateStopPositionForSymbol(specificFinalSymbol);
+          targetScrollPositionRef.current = calculateStopPositionForSymbol(reelSpecificFinalSymbol);
           if (!targetScrollPositionRef.current) {
             targetScrollPositionRef.current = calculateRandomStopPosition();
           }
