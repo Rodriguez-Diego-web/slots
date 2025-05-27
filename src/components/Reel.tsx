@@ -154,6 +154,12 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
           setIsAnimating(false); // Stop animation flag
           currentSpeedRef.current = 0; // Reset speed
           targetScrollPositionRef.current = null; // Clear the target
+          
+          // CRITICALLY IMPORTANT: Reset the animation protection flag
+          // This ensures that future spins are allowed after this one completes
+          isCurrentlyAnimatingRef.current = false;
+          console.log(`Reel ${reelId}: Animation completed and animation lock RELEASED.`);
+          
           if (currentAnimationSpinIdRef.current !== null) { // Sicherstellen, dass eine ID vorhanden ist
             onSpinComplete(reelId, currentAnimationSpinIdRef.current); // Geändert: reelId und spinId zurückgeben
           }
@@ -289,11 +295,36 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
 
   }, [reelStrip, stripScrollPosition, calculateRandomStopPosition]);
 
+  // Hard-coded protection to prevent multiple spins while one is in progress
+  const isCurrentlyAnimatingRef = useRef(false);
+  const lastAnimationStartTimeRef = useRef(0);
+  const MINIMUM_ANIMATION_TIME = 30000; // 30 seconds minimum animation time
+  
   useImperativeHandle(ref, () => ({
     startSpinning: (finalSymbolsForReels: Symbol[], spinId: number) => { // spinId als Parameter hinzugefügt
+      const now = Date.now();
+      
+      // ABSOLUTE PROTECTION: If already animating or not enough time since last animation, reject this spin attempt
+      if (isCurrentlyAnimatingRef.current) {
+        console.error(`Reel ${reelId}: ALREADY ANIMATING! Spin attempt REJECTED.`);
+        return;
+      }
+      
+      // Ensure minimum time between animations
+      const timeSinceLastAnimation = now - lastAnimationStartTimeRef.current;
+      if (timeSinceLastAnimation < MINIMUM_ANIMATION_TIME) {
+        console.error(`Reel ${reelId}: Too soon to start new animation! Only ${Math.round(timeSinceLastAnimation/1000)}s since last one. Min required: ${MINIMUM_ANIMATION_TIME/1000}s. REJECTED.`);
+        return;
+      }
+      
+      // Mark as animating and record time
+      isCurrentlyAnimatingRef.current = true;
+      lastAnimationStartTimeRef.current = now;
+      
       // 1. Sicherstellen, dass es Symbole gibt und die Bilder geladen sind
       if (reelStrip.length === 0) {
         console.error(`Reel ${reelId}: reelStrip ist leer, kann nicht drehen.`);
+        isCurrentlyAnimatingRef.current = false; // Reset animation flag
         return;
       }
       
@@ -315,6 +346,9 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
             setIsAnimating(true);
           }
         }, 100);
+        
+        // CRITICAL: Reset animation flag here too in case of image loading issues
+        isCurrentlyAnimatingRef.current = false;
         return;
       }
 
