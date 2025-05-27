@@ -25,15 +25,13 @@ export default function AdminPanel() {
   const [redeemMessage, setRedeemMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Paginierung
+
   const [currentPage, setCurrentPage] = useState(1);
   const codesPerPage = 20;
 
-  // Helper-Funktion zum Filtern der Codes (ohne useCallback)
   const filterCodes = (codes: WinCodeRecord[], filterType: 'all' | 'claimed' | 'unclaimed') => {
     let result = [...codes];
     
-    // Filter anwenden
     if (filterType === 'claimed') {
       result = result.filter(code => code.isClaimed);
     } else if (filterType === 'unclaimed') {
@@ -43,19 +41,17 @@ export default function AdminPanel() {
     return result;
   };
   
-  // Separate Funktion zum Anwenden der Filter - mit useCallback
   const applyFilters = useCallback((codes: WinCodeRecord[]) => {
     const result = filterCodes(codes, filter);
     setFilteredCodes(result);
-    setCurrentPage(1); // Bei Filteränderung zur ersten Seite zurückspringen
+    setCurrentPage(1); 
   }, [filter]);
   
-  // Funktion zum Laden der Gewinn-Codes aus Firestore
   const loadWinCodes = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Immer alle Codes laden, um lokales Filtern zu ermöglichen
+      
       const q = query(collection(db, "userWins"), orderBy("timestamp", "desc"));
       
       const querySnapshot = await getDocs(q);
@@ -77,7 +73,6 @@ export default function AdminPanel() {
       
       setWinCodes(codes);
       
-      // Nach dem Laden die Filter anwenden
       const filteredResult = filterCodes(codes, filter);
       setFilteredCodes(filteredResult);
     } catch (err) {
@@ -88,34 +83,29 @@ export default function AdminPanel() {
     }
   }, [filter]);
   
-  // Lade die Gewinn-Codes beim ersten Rendern
   useEffect(() => {
     loadWinCodes();
   }, [loadWinCodes]);
   
-  // Wende Filter an, wenn sich der Filter ändert
   useEffect(() => {
     if (winCodes.length > 0) {
       applyFilters(winCodes);
     }
   }, [filter, applyFilters, winCodes]);
   
-  // Berechne die aktuellen Codes für die Seite
   const indexOfLastCode = currentPage * codesPerPage;
   const indexOfFirstCode = indexOfLastCode - codesPerPage;
   const currentCodes = filteredCodes.slice(indexOfFirstCode, indexOfLastCode);
   const totalPages = Math.ceil(filteredCodes.length / codesPerPage);
   
-  // Funktion zum Ändern der Seite
+  
   const paginate = (pageNumber: number) => {
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     }
   };
 
-  // Hier haben wir die redeemCode-Funktion entfernt, da wir nur redeemCodeDirectly verwenden
 
-  // Funktion, um einen Code direkt in Firestore als eingelöst zu markieren (ohne Cloud Function)
   const redeemCodeDirectly = async () => {
     if (!codeToRedeem || codeToRedeem.length !== 6) {
       setRedeemMessage({
@@ -131,7 +121,6 @@ export default function AdminPanel() {
     try {
       console.log("Versuche Code direkt in Firestore einzulösen:", codeToRedeem);
       
-      // Suche nach dem Code in der Firestore-Datenbank
       const userWinsRef = collection(db, "userWins");
       const q = query(userWinsRef, where("winCode", "==", codeToRedeem));
       const querySnapshot = await getDocs(q);
@@ -145,7 +134,6 @@ export default function AdminPanel() {
         return;
       }
       
-      // Code gefunden, überprüfen, ob er bereits eingelöst wurde
       const docRef = querySnapshot.docs[0].ref;
       const winData = querySnapshot.docs[0].data();
       
@@ -158,7 +146,6 @@ export default function AdminPanel() {
         return;
       }
       
-      // Code als eingelöst markieren
       await setDoc(docRef, {
         isClaimed: true,
         claimedAt: serverTimestamp()
@@ -170,7 +157,6 @@ export default function AdminPanel() {
         type: "success"
       });
       
-      // Codes neu laden und Formular zurücksetzen
       loadWinCodes();
       setCodeToRedeem('');
     } catch (err) {
@@ -190,7 +176,6 @@ export default function AdminPanel() {
     }
   };
 
-  // Formatiert ein Timestamp-Objekt zu einem lesbaren Datum
   const formatDate = (timestamp: Timestamp | null) => {
     if (!timestamp) return "—";
     
@@ -328,13 +313,11 @@ export default function AdminPanel() {
                 <div className="flex gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
                     .filter(pageNumber => {
-                      // Zeige nur Seiten in der Nähe der aktuellen Seite und erste/letzte Seite
                       return pageNumber === 1 || 
                              pageNumber === totalPages || 
                              Math.abs(pageNumber - currentPage) <= 1;
                     })
                     .map((pageNumber, index, array) => {
-                      // Füge Ellipsis zwischen nicht aufeinanderfolgenden Seitenzahlen ein
                       const prevPage = array[index - 1];
                       const showEllipsis = prevPage && pageNumber - prevPage > 1;
                       

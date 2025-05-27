@@ -19,12 +19,12 @@ const Header = () => {
 
   const handleSignIn = async () => {
     await signInWithGoogle();
-    setMenuOpen(false); // Close menu after sign in attempt
+    setMenuOpen(false);
   };
 
   const handleSignOut = async () => {
     await signOutUser();
-    setMenuOpen(false); // Close menu after sign out attempt
+    setMenuOpen(false);
   };
 
   return (
@@ -59,14 +59,14 @@ const Header = () => {
             <div className="text-white">...</div>
           ) : currentUser ? (
             <button
-              onClick={handleSignOut} // Use new handler
+              onClick={handleSignOut}
               className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
             >
               Sign Out
             </button>
           ) : (
             <button
-              onClick={handleSignIn} // Use new handler
+              onClick={handleSignIn}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
               Sign In with Google

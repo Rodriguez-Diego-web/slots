@@ -1,26 +1,20 @@
-// Sound-Status und -Ressourcen
+
 let audioContext: AudioContext | null = null;
 
-// Spin Sound
 let spinSoundBuffer: AudioBuffer | null = null;
 let spinSoundSource: AudioBufferSourceNode | null = null;
 
-// Win Sound
 let winSoundBuffer: AudioBuffer | null = null;
 let winSoundSource: AudioBufferSourceNode | null = null;
 
-// Audio-Steuerung
 let gainNode: GainNode | null = null;
 
-// Flags, um zu verfolgen, ob Sound-Ladevorgänge laufen
 let isLoadingSound = false;
-const soundsLoaded = { // 'const' statt 'let' da es ein Objekt ist, das nie neu zugewiesen wird
+const soundsLoaded = {
   spin: false,
   win: false
 };
 
-
-// Typdefinition für Browser-Kompatibilität
 interface WindowWithAudioContext extends Window {
   webkitAudioContext?: typeof AudioContext;
 }
@@ -30,7 +24,6 @@ interface WindowWithAudioContext extends Window {
  * @returns Promise<boolean> True, wenn das Laden erfolgreich war
  */
 export async function loadSounds(): Promise<boolean> {
-  // Wenn alle Sounds bereits geladen sind, nicht erneut laden
   if (soundsLoaded.spin && soundsLoaded.win && !isLoadingSound) {
     return true;
   }
@@ -38,7 +31,6 @@ export async function loadSounds(): Promise<boolean> {
   isLoadingSound = true;
   
   try {
-    // 1. Audio-Kontext erstellen oder wiederverwenden
     if (!audioContext) {
       const win = window as WindowWithAudioContext;
       const AudioContextClass = window.AudioContext || win.webkitAudioContext;
@@ -52,7 +44,6 @@ export async function loadSounds(): Promise<boolean> {
       audioContext = new AudioContextClass();
     }
     
-    // 2. Audio-Kontext aktivieren, wenn er suspendiert ist
     if (audioContext.state === 'suspended') {
       try {
         await audioContext.resume();
@@ -61,10 +52,8 @@ export async function loadSounds(): Promise<boolean> {
       }
     }
     
-    // 3. Sound-Dateien laden
     const loadingPromises = [];
     
-    // Spin-Sound laden
     if (!spinSoundBuffer) {
       const spinLoadPromise = fetch('/sound/spin-232536.mp3')
         .then(response => {
@@ -88,7 +77,6 @@ export async function loadSounds(): Promise<boolean> {
       soundsLoaded.spin = true;
     }
     
-    // Win-Sound laden
     if (!winSoundBuffer) {
       const winLoadPromise = fetch('/sound/win.mp3')
         .then(response => {
@@ -112,7 +100,6 @@ export async function loadSounds(): Promise<boolean> {
       soundsLoaded.win = true;
     }
     
-    // Warten, bis alle Sounds geladen sind
     await Promise.all(loadingPromises);
     
     isLoadingSound = false;
@@ -129,12 +116,10 @@ export async function loadSounds(): Promise<boolean> {
  * @returns Funktion zum Stoppen des Sounds
  */
 export function playSpinSound() {
-  // Direkte Benutzerinteraktion - versuche, den AudioContext zu erstellen oder zu entsperren
   const forceInitAudio = async () => {
     try {
       console.log('Versuche Audio zu initialisieren nach Benutzerinteraktion...');
       
-      // Erstelle AudioContext falls nötig
       if (!audioContext) {
         const win = window as WindowWithAudioContext;
         const AudioContextClass = window.AudioContext || win.webkitAudioContext;
@@ -148,13 +133,11 @@ export function playSpinSound() {
         }
       }
       
-      // Versuche, den AudioContext zu entsperren (erfordert Benutzerinteraktion)
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
         console.log('AudioContext entsperrt, neuer Status:', audioContext.state);
       }
       
-      // Lade Sounds, falls noch nicht geschehen
       if (!spinSoundBuffer) {
         console.log('Lade Sounddateien...');
         const loaded = await loadSounds();
@@ -168,13 +151,10 @@ export function playSpinSound() {
     }
   };
 
-  // Haupt-Funktion zum Abspielen des Sounds
   const playSound = async () => {
     try {
-      // 1. Bestehenden Sound stoppen
       stopSpinSound();
       
-      // 2. Prüfen, ob AudioContext und Sound bereit sind
       if (!audioContext || !spinSoundBuffer || audioContext.state !== 'running') {
         const initialized = await forceInitAudio();
         if (!initialized) {
@@ -183,22 +163,18 @@ export function playSpinSound() {
         }
       }
 
-      // 3. Neuen Sound erstellen mit Lautstärkekontrolle
-      // Nach der vorherigen Prüfung und Initialisierung sollte audioContext nicht null sein
-      if (!audioContext || !spinSoundBuffer) return; // Sicherheitsprüfung
+      if (!audioContext || !spinSoundBuffer) return;
       
       spinSoundSource = audioContext.createBufferSource();
       spinSoundSource.buffer = spinSoundBuffer;
       spinSoundSource.loop = true;
       
-      // Lautstärkeregler mit höherer Lautstärke
       gainNode = audioContext.createGain();
-      gainNode.gain.value = 1.0; // 100% Lautstärke
+      gainNode.gain.value = 1.0; 
       
       spinSoundSource.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      // 4. Sound starten
       spinSoundSource.start(0);
       console.log('Spin-Sound wird abgespielt!');
     } catch (error) {
@@ -206,21 +182,15 @@ export function playSpinSound() {
     }
   };
 
-  // Starte den Sound sofort
   playSound();
-  
-  // Funktion zum Stoppen zurückgeben
+
   return stopSpinSound;
 }
 
-/**
- * Erzwinge die Initialisierung des Audio-Kontexts und lade Sounds
- */
 async function forceInitAudio(): Promise<boolean> {
   try {
     console.log('Erzwungene Audio-Initialisierung...');
     
-    // Erstelle AudioContext falls nötig
     if (!audioContext) {
       const win = window as WindowWithAudioContext;
       const AudioContextClass = window.AudioContext || win.webkitAudioContext;
@@ -234,13 +204,11 @@ async function forceInitAudio(): Promise<boolean> {
       }
     }
     
-    // Versuche, den AudioContext zu entsperren
     if (audioContext.state === 'suspended') {
       await audioContext.resume();
       console.log('AudioContext entsperrt, neuer Status:', audioContext.state);
     }
     
-    // Lade Sounds
     return await loadSounds();
   } catch (e) {
     console.error('Fehler bei Audio-Initialisierung:', e);
@@ -248,9 +216,6 @@ async function forceInitAudio(): Promise<boolean> {
   }
 }
 
-/**
- * Stoppt den aktuell spielenden Spin-Sound
- */
 export function stopSpinSound() {
   if (spinSoundSource) {
     try {
@@ -270,10 +235,8 @@ export function stopSpinSound() {
  * @returns Funktion zum Stoppen des Sounds
  */
 export function playWinSound(loop: boolean = false) {
-  // Sound-Initialisierung bei Benutzerinteraktion
   const initAndPlayWinSound = async () => {
     try {
-      // 1. Sicherstellen, dass der AudioContext und Win-Sound geladen sind
       if (!audioContext || !winSoundBuffer) {
         const initialized = await forceInitAudio();
         if (!initialized || !winSoundBuffer) {
@@ -282,23 +245,19 @@ export function playWinSound(loop: boolean = false) {
         }
       }
       
-      // 2. Stoppe bestehenden Win-Sound
       stopWinSound();
       
-      // 3. Neuen Sound erstellen
-      if (audioContext && winSoundBuffer) { // Typensicherheit
+      if (audioContext && winSoundBuffer) {
         winSoundSource = audioContext.createBufferSource();
         winSoundSource.buffer = winSoundBuffer;
         winSoundSource.loop = loop;
         
-        // Lautstärkeregler
         const winGainNode = audioContext.createGain();
-        winGainNode.gain.value = 1.0; // 100% Lautstärke
+        winGainNode.gain.value = 1.0; 
         
         winSoundSource.connect(winGainNode);
         winGainNode.connect(audioContext.destination);
         
-        // Sound starten
         winSoundSource.start(0);
         console.log('Win-Sound wird abgespielt!');
       }
@@ -307,10 +266,8 @@ export function playWinSound(loop: boolean = false) {
     }
   };
   
-  // Starte den Sound
   initAndPlayWinSound();
   
-  // Funktion zum Stoppen zurückgeben
   return stopWinSound;
 }
 
@@ -322,8 +279,7 @@ export function stopWinSound() {
     try {
       winSoundSource.stop();
       console.log('Win-Sound gestoppt');
-    } catch { // Catch ohne Parameter, da wir den Fehler nicht verwenden
-      // Ignoriere Fehler beim Stoppen
+    } catch { 
     } finally {
       winSoundSource = null;
     }

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import {
   auth,
   db,
-  User, // Firebase User type
+  User,
   signInWithPopup,
   signOut as firebaseSignOut,
   getUserProfile,
@@ -64,24 +64,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is signed in, see if we have a profile, otherwise create one.
         const profile = await getUserProfile(user.uid);
         if (!profile) {
-          // New user, initialize spins etc.
           await initializeOrResetSpins(user.uid);
         }
         
-        // Admin-Status prüfen
         const adminStatus = await checkAdminStatus(user.uid);
         setIsAdmin(adminStatus);
         
-        // E-Mail-Verifizierungsstatus setzen
         setIsEmailVerified(user.emailVerified);
         setEmailNeedsVerification(!user.emailVerified);
         
         setCurrentUser(user);
       } else {
-        // User is signed out
         setCurrentUser(null);
         setIsAdmin(false);
         setIsEmailVerified(false);
@@ -90,7 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -99,11 +93,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsAuthLoading(true);
       await signInWithPopup(auth, provider);
-      // User object is handled by onAuthStateChanged
-      // If new user, onAuthStateChanged logic will create profile and spins
     } catch (error) {
       console.error("Error signing in with Google: ", error);
-      setIsAuthLoading(false); // Ensure loading is false on error
+      setIsAuthLoading(false); 
     }
   };
 
@@ -111,24 +103,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsAuthLoading(true);
       await firebaseSignOut(auth);
-      // currentUser will be set to null by onAuthStateChanged
     } catch (error) {
       console.error("Error signing out: ", error);
-      setIsAuthLoading(false); // Ensure loading is false on error
+      setIsAuthLoading(false); 
     }
   };
 
-  // Implementierung der E-Mail/Passwort-Funktionen
   const signInWithEmail = async (email: string, password: string) => {
     try {
       setAuthError(null);
       setIsAuthLoading(true);
       await loginWithEmail(email, password);
-      // User wird durch onAuthStateChanged gesetzt, aber wir stellen sicher,
-      // dass isAuthLoading zurückgesetzt wird, wenn das zu lange dauert
       setTimeout(() => {
         setIsAuthLoading(false);
-      }, 1500); // Sicherheits-Timeout nach 1,5 Sekunden
+      }, 1500);
     } catch (error) {
       console.error("Fehler bei der E-Mail-Anmeldung:", error);
       if (error instanceof Error) {
@@ -145,11 +133,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAuthError(null);
       setIsAuthLoading(true);
       await registerWithEmail(email, password);
-      // User wird durch onAuthStateChanged gesetzt und Profil initialisiert
-      // Sicherheits-Timeout für den Fall, dass onAuthStateChanged nicht korrekt auslöst
       setTimeout(() => {
         setIsAuthLoading(false);
-      }, 1500); // Sicherheits-Timeout nach 1,5 Sekunden
+      }, 1500);
     } catch (error) {
       console.error("Fehler bei der Registrierung:", error);
       if (error instanceof Error) {

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { SlotSymbol } from '../lib/slotLogic';
 
-// Dynamischer Import für Confetti, um SSR-Probleme zu vermeiden
 const ReactConfetti = dynamic(() => import('react-confetti'), {
   ssr: false,
 });
@@ -24,7 +23,6 @@ const WinPopup: React.FC<WinPopupProps> = ({ winningWord, winCode, onClose }) =>
   });
 
   useEffect(() => {
-    // Setze die Fenstergröße beim Mount
     const handleResize = () => {
       setDimensions({
         width: window.innerWidth,
@@ -32,7 +30,6 @@ const WinPopup: React.FC<WinPopupProps> = ({ winningWord, winCode, onClose }) =>
       });
     };
 
-    // Event Listener für Fenstergrößenänderungen
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

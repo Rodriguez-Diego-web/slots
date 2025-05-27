@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Image from 'next/image';
-import { SlotSymbol, symbols as allSymbolsFromLogic } from '@/lib/slotLogic'; // Import all symbols
+import { SlotSymbol, symbols as allSymbolsFromLogic } from '@/lib/slotLogic'; 
 
-// Typ-Alias, um bestehenden Code mit SlotSymbol kompatibel zu machen
 type Symbol = SlotSymbol;
 
 export interface ReelRefMethods {
@@ -13,28 +12,27 @@ export interface ReelRefMethods {
 
 interface ReelProps {
   spinning: boolean;
-  finalSymbol: SlotSymbol | null; // This might become less directly used if imperative startSpinning always provides target
+  finalSymbol: SlotSymbol | null; 
   onSpinComplete: (reelId: number, spinId: number) => void;
   delayStart?: number;
-  reelId: number; // Add a unique ID for each reel for debugging/keying if needed
+  reelId: number; 
 }
 
-const REEL_STRIP_LENGTH = 30; // Länge des Symbolstreifens für jede Rolle
-const SYMBOL_HEIGHT = 120; // Höhe jedes Symbols in Pixeln
-const VISIBLE_SYMBOLS = 3; // Anzahl der sichtbaren Symbole
+const REEL_STRIP_LENGTH = 30; 
+const SYMBOL_HEIGHT = 120;
+const VISIBLE_SYMBOLS = 3; 
 
-// Animation-Konstanten - optimiert für flüssigere Animationen
-const MAX_SPEED = 40; // Erhöhte Maximalgeschwindigkeit für flüssigere Animation
-const ACCELERATION = 0.5; // Schnellere Beschleunigung
-const DECELERATION_FACTOR = 0.95; // Schnelleres Abbremsen (war 0.97)
-const TARGETED_STOP_ANTICIPATION_SPINS = 1.0; // Reduzierte "Extra"-Umdrehungen vor dem Zielstopp
-const MIN_SPEED_NEAR_TARGET = 1.0; // Erhöhte Mindestgeschwindigkeit nahe dem Ziel
-const VERY_MIN_SPEED = 0.5; // Erhöhte sehr niedrige Geschwindigkeit
+// Animation-Konstanten - optimiert für deutlich längere Animationen
+const MAX_SPEED = 35; // Reduzierte Maximalgeschwindigkeit für längere Drehzeit
+const ACCELERATION = 0.3; // Noch langsamere Beschleunigung für deutlich längere Spin-Zeit
+const DECELERATION_FACTOR = 0.985; // Sehr langsames Abbremsen für deutlich längere Auslaufzeit
+const TARGETED_STOP_ANTICIPATION_SPINS = 3.0; // Stark erhöhte "Extra"-Umdrehungen vor dem Zielstopp
+const MIN_SPEED_NEAR_TARGET = 0.6; // Stark reduzierte Mindestgeschwindigkeit nahe dem Ziel
+const VERY_MIN_SPEED = 0.3; // Stark reduzierte Endgeschwindigkeit für sehr langes Auslaufen
 
-// Helper function to initialize the reel strip
 const initializeReelStrip = (): Symbol[] => {
   const newStrip: Symbol[] = [];
-  const baseSymbols = [...allSymbolsFromLogic]; // Ensure all symbols are available
+  const baseSymbols = [...allSymbolsFromLogic]; 
   for (let i = 0; i < REEL_STRIP_LENGTH; i++) {
     newStrip.push(baseSymbols[i % baseSymbols.length]);
   }
@@ -327,25 +325,34 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
       // 2. Optimiertes Logging (reduziert)
       console.log(`Reel ${reelId}: Start Drehen für Symbol: ${reelSpecificFinalSymbol?.name || 'Random'}`);
 
-      // 3. Zielsymbol-Behandlung
-      if (!reelSpecificFinalSymbol) {
-        // Bei fehlendem Zielsymbol auf zufälliges Symbol setzen
-        targetScrollPositionRef.current = calculateRandomStopPosition();
-      } else {
-        // Symbol in der Rollenstreifen finden
-        const targetSymbolIndex = reelStrip.findIndex(
-          (symbol) => symbol.id === reelSpecificFinalSymbol.id // Nach ID statt Name vergleichen (eindeutiger)
-        );
+      // Erst starten ohne Zielposition, damit die Walze länger frei dreht
+      targetScrollPositionRef.current = null;
 
-        if (targetSymbolIndex !== -1) {
-          targetScrollPositionRef.current = calculateStopPositionForSymbol(reelSpecificFinalSymbol);
-          if (!targetScrollPositionRef.current) {
+      // Verzögerung vor dem Setzen des Ziels (2500ms + 800ms pro Walze = stark gestaffelte Stopps)
+      const minSpinTime = 8500 + (reelId * 800);
+      
+      // Nach der Mindestdrehzeit erst das Ziel setzen
+      window.setTimeout(() => {
+        // 3. Zielsymbol-Behandlung - verzögert ausgeführt
+        if (!reelSpecificFinalSymbol) {
+          // Bei fehlendem Zielsymbol auf zufälliges Symbol setzen
+          targetScrollPositionRef.current = calculateRandomStopPosition();
+        } else {
+          // Symbol in der Rollenstreifen finden
+          const targetSymbolIndex = reelStrip.findIndex(
+            (symbol) => symbol.id === reelSpecificFinalSymbol.id // Nach ID statt Name vergleichen (eindeutiger)
+          );
+
+          if (targetSymbolIndex !== -1) {
+            targetScrollPositionRef.current = calculateStopPositionForSymbol(reelSpecificFinalSymbol);
+            if (!targetScrollPositionRef.current) {
+              targetScrollPositionRef.current = calculateRandomStopPosition();
+            }
+          } else {
             targetScrollPositionRef.current = calculateRandomStopPosition();
           }
-        } else {
-          targetScrollPositionRef.current = calculateRandomStopPosition();
         }
-      }
+      }, minSpinTime);
       
       // 4. Animation starten - mit optimierter Geschwindigkeit für flachere Beschleunigungskurve
       currentSpeedRef.current = MIN_SPEED_NEAR_TARGET; // Mit Grundgeschwindigkeit starten statt bei 0

@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const SlotMachine = () => {
   const [spinning, setSpinning] = useState(false);
-  const isSpinningRef = useRef(false); // Zusätzliche Ref um Race Conditions zu vermeiden
+  const isSpinningRef = useRef(false); 
   const [finalSymbols, setFinalSymbols] = useState<SlotSymbol[]>([]);
   const [winAmount, setWinAmount] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState(1);
@@ -32,33 +32,31 @@ const SlotMachine = () => {
   const [showWinPopup, setShowWinPopup] = useState(false);
   const [winningWord, setWinningWord] = useState<string | null>(null);
   const [displayedWinCode, setDisplayedWinCode] = useState<string | null>(null);
-  const isWinSaved = useRef(false); // Vermeidet mehrfaches Speichern eines Gewinns
+  const isWinSaved = useRef(false); 
 
   const { currentUser, isAuthLoading } = useAuth();
 
   const completedReelsRef = useRef(0);
-  const currentSpinIdRef = useRef(0); // NEU: Ref für die aktuelle Spin-ID
+  const currentSpinIdRef = useRef(0); 
   const finalSymbolsRef = useRef<SlotSymbol[]>(finalSymbols);
   const reelRefs = useRef<(ReelRefMethods | null)[]>([]);
   const latestWinAmountRef = useRef(0);
   const latestWinningWordRef = useRef<string | null>(null);
+  const lastSpinTimeRef = useRef(0); // Ref zum Tracking der letzten Spin-Zeit
 
   useEffect(() => {
     finalSymbolsRef.current = finalSymbols;
   }, [finalSymbols]);
 
-  // Automatisch das Login-Modal schließen, wenn der Benutzer angemeldet ist
   useEffect(() => {
     if (currentUser && !isAuthLoading) {
       setShowLoginPromptModal(false);
     }
   }, [currentUser, isAuthLoading]);
 
-  // Sound beim ersten Laden initialisieren
   useEffect(() => {
     loadSounds().catch(console.error);
     
-    // Aufräumfunktion für den Sound zurückgeben
     return () => {
       stopSpinSound();
     };
@@ -71,7 +69,6 @@ const SlotMachine = () => {
 
     const updateUserState = async () => {
       if (currentUser) {
-        // Beim Login lokalen Gast-Spin-Status löschen
         clearGuestSpinFromLocalStorage();
         
         const profile = await getUserProfile(currentUser.uid);
@@ -83,11 +80,10 @@ const SlotMachine = () => {
         } else if (profile) {
           setAttemptsLeft(profile.spinsLeft);
         } else {
-          setAttemptsLeft(3); // Default spins for new/error state
+          setAttemptsLeft(3); 
         }
         setGuestSpinUsed(false);
       } else {
-        // Gast-Status aus dem LocalStorage prüfen
         const hasUsedSpin = checkGuestSpinStatus();
         setGuestSpinUsed(hasUsedSpin);
         setAttemptsLeft(hasUsedSpin ? 0 : 1);
@@ -98,48 +94,56 @@ const SlotMachine = () => {
   }, [currentUser, isAuthLoading]);
 
   const handleSpin = useCallback(async () => {
+    // ABSOLUTER MINIMUM-ABSTAND zwischen Spins: 20 Sekunden
+    const ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS = 20000;
+    const now = Date.now();
+    const timeSinceLastSpin = now - lastSpinTimeRef.current;
+    
+    // Prüfen, ob seit dem letzten Spin genügend Zeit vergangen ist
+    if (timeSinceLastSpin < ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS) {
+      console.log(`Zu früher Spin-Versuch: Nur ${Math.round(timeSinceLastSpin/1000)}s seit letztem Spin vergangen. Minimum: ${ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS/1000}s`);
+      return; // Absolut keine Spins zulassen, wenn Mindestzeit nicht vergangen ist
+    }
+    
     // Prüfen, ob bereits eine Drehung läuft (verhindert Doppelklicks)
     if (isSpinningRef.current || spinning || isAuthLoading) {
       console.log('Drehung läuft bereits oder Ladevorgang aktiv, Button-Klick ignoriert');
       return;
     }
     
-    // Zurücksetzen des Win-Saved-Status für einen neuen Spin
+    // Aktuelle Zeit als letzten Spin-Zeitpunkt speichern
+    lastSpinTimeRef.current = now;
+    
     isWinSaved.current = false;
     
-    // Spinning-Status setzen, bevor irgendwelche anderen Prüfungen durchgeführt werden
     isSpinningRef.current = true;
     setSpinning(true);
-    currentSpinIdRef.current += 1; // NEU: Spin-ID für diesen Spin erhöhen
-    const newSpinId = currentSpinIdRef.current; // NEU: Aktuelle Spin-ID für diesen Durchlauf speichern
+    currentSpinIdRef.current += 1; 
+    const newSpinId = currentSpinIdRef.current;
 
-    // User ohne Anmeldung kann nur einmal drehen
     if (!currentUser && guestSpinUsed) {
       setShowLoginPromptModal(true);
-      isSpinningRef.current = false; // Zurücksetzen, da wir nur das Modal zeigen
+      isSpinningRef.current = false;
       setSpinning(false);
       return;
     }
 
     if (currentUser && attemptsLeft <= 0) {
       setShowOutOfSpinsModal(true);
-      isSpinningRef.current = false; // Zurücksetzen, da wir nur das Modal zeigen
+      isSpinningRef.current = false; 
       setSpinning(false);
       return;
     }
 
     if (!currentUser && !guestSpinUsed) {
       setGuestSpinUsed(true);
-      // Speichere den Gast-Spin im localStorage für Seitenaktualisierungen
       saveGuestSpinToLocalStorage();
     }
 
     if (currentUser && attemptsLeft > 0) {
-      // Reduziere die Anzahl der Versuche lokal
       const newAttemptsLeft = attemptsLeft - 1;
       setAttemptsLeft(newAttemptsLeft);
       
-      // Speichere den aktualisierten Wert in der Datenbank
       try {
         updateUserSpinsCount(currentUser.uid, newAttemptsLeft);
       } catch (error) {
@@ -150,17 +154,14 @@ const SlotMachine = () => {
       return;
     }
 
-    // Spin-Sound abspielen
     playSpinSound();
     
-    // Zustand zurücksetzen
     setWinAmount(0);
     setWinningWord(null);
     setShowWinPopup(false);
     setDisplayedWinCode(null);
     completedReelsRef.current = 0;
     
-    // Spin-Ergebnis generieren
     const spinResult: SpinResult = spin();
     
     finalSymbolsRef.current = spinResult.symbols;
@@ -169,56 +170,50 @@ const SlotMachine = () => {
     latestWinAmountRef.current = spinResult.winAmount;
     latestWinningWordRef.current = spinResult.winningWord;
     
-    // Rollen drehen
-    reelRefs.current.forEach((reel) => { // Geändert: 'index' entfernt
+    reelRefs.current.forEach((reel) => { 
       if (reel) {
-        // Übergebe die finalen Symbole und die aktuelle Spin-ID an jede Walze
-        reel.startSpinning(spinResult.symbols, newSpinId); // NEU: newSpinId übergeben
+        reel.startSpinning(spinResult.symbols, newSpinId); 
       }
     });
   }, [spinning, currentUser, guestSpinUsed, isAuthLoading, attemptsLeft]);
 
-  const handleReelComplete = useCallback(async (reelId: number, spinId: number) => { // NEU: spinId als Parameter
+  const handleReelComplete = useCallback(async (reelId: number, spinId: number) => { 
     // Nur fortfahren, wenn die spinId mit der aktuellen Spin-ID übereinstimmt
     if (spinId !== currentSpinIdRef.current) {
       console.log(`Reel ${reelId} completed for an old spin (spinId: ${spinId}, currentSpinId: ${currentSpinIdRef.current}). Ignoring.`);
       return;
     }
 
+    console.log(`Reel ${reelId} completed. Spin ID: ${spinId}`);
     completedReelsRef.current += 1;
-
+    
+    // Warte absichtlich bis alle Walzen KOMPLETT angehalten sind, bevor wir weitermachen
     if (completedReelsRef.current === 3) {
-      // Alle Walzen sind gestoppt
+      console.log(`All reels completed for spin ID: ${spinId}. Processing result...`);
       if (latestWinAmountRef.current > 0) {
         playWinSound();
 
-        // Speichern des Gewinns in Firebase (nur wenn noch nicht gespeichert)
         if (currentUser && !isWinSaved.current) {
           saveUserWin(currentUser.uid, latestWinAmountRef.current, latestWinningWordRef.current || '', finalSymbolsRef.current)
             .then(winData => { 
               setDisplayedWinCode(winData ? winData.winCode : null); 
               isWinSaved.current = true; 
-              // Verzögerung hinzufügen, bevor das Popup angezeigt wird, um den Walzen Zeit zum Stoppen zu geben
               setTimeout(() => {
                 setShowWinPopup(true);
-                // Spin-Sound hier stoppen, da das Popup erscheint
                 stopSpinSound(); 
               }, 500);
             })
             .catch(error => {
               console.error('Fehler beim Speichern des Gewinns:', error);
-              // Fallback: Popup trotzdem anzeigen, aber ohne Code oder mit Fehlermeldung?
-              // Fürs Erste: Popup anzeigen, Spinning bleibt true.
               setTimeout(() => {
                 setShowWinPopup(true);
                 stopSpinSound();
               }, 500);
             });
-        } else if (!currentUser && latestWinAmountRef.current > 0) { // Gast-Gewinn
-          // Für Gäste den Gewinn im LocalStorage speichern, falls noch nicht geschehen
+        } else if (!currentUser && latestWinAmountRef.current > 0) { 
           if (!isWinSaved.current) {
             saveGuestSpinToLocalStorage(); 
-            setGuestSpinUsed(true); // Gast-Spin als verbraucht markieren
+            setGuestSpinUsed(true); 
             isWinSaved.current = true;
           }
           setTimeout(() => {
@@ -227,23 +222,33 @@ const SlotMachine = () => {
           }, 500);
         }
       } else {
-        // Bei keinem Gewinn nach einer kurzen Verzögerung den Spinning-Status zurücksetzen,
-        // damit die Benutzer genug Zeit haben, das Ergebnis zu sehen
+        // ABSOLUT WICHTIG: Bei keinem Gewinn erst nach SEHR langer Verzögerung entsperren
+        stopSpinSound();
+        
+        // Berechnung: Mindestens 15 Sekunden ab Start des Spins bis zur Entsperrung
+        const spinStartTime = lastSpinTimeRef.current;
+        const currentTime = Date.now();
+        const elapsedSinceSpinStart = currentTime - spinStartTime;
+        const MINIMUM_TOTAL_LOCK_TIME = 15000; // 15 Sekunden Mindestsperre
+        
+        // Berechnen, wie viel länger wir noch warten müssen, um auf 15 Sekunden zu kommen
+        const remainingLockTime = Math.max(MINIMUM_TOTAL_LOCK_TIME - elapsedSinceSpinStart, 5000);
+        
+        console.log(`Sperre wird nach ${remainingLockTime/1000} weiteren Sekunden aufgehoben (Gesamt: ${(elapsedSinceSpinStart + remainingLockTime)/1000}s seit Spin-Start)`); 
+        
         setTimeout(() => {
-          stopSpinSound();
+          console.log('Final button unlock after extended lock period');
           setSpinning(false);
           isSpinningRef.current = false;
-        }, 2500); // TEST: Erhöht von 1200ms auf 2500ms
+        }, remainingLockTime);
       }
     }
   }, [currentUser]);
 
   const handleCloseWinPopup = () => {
-    // Alle Sounds stoppen, wenn das Win-Popup geschlossen wird
     stopAllSounds();
     setShowWinPopup(false);
     setWinningWord(null);
-    // Erst hier den Spinning-Status zurücksetzen, wenn ein Gewinn vorlag
     if (latestWinAmountRef.current > 0) {
       setSpinning(false);
       isSpinningRef.current = false;

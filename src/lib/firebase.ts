@@ -1,12 +1,9 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, FieldValue, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { getAnalytics, Analytics } from "firebase/analytics";
 import { SlotSymbol } from './slotLogic';
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -17,7 +14,6 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
 let app: FirebaseApp;
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
@@ -34,7 +30,6 @@ if (typeof window !== 'undefined') {
 
 const provider = new GoogleAuthProvider();
 
-// Helper to get current date as YYYY-MM-DD string
 const getCurrentDateString = () => {
   const today = new Date();
   const year = today.getFullYear();
@@ -45,13 +40,10 @@ const getCurrentDateString = () => {
 
 interface UserProfile {
   spinsLeft: number;
-  lastSpinsResetDate: string; // YYYY-MM-DD
-  // Optionally add other fields like displayName, email if needed here
+  lastSpinsResetDate: string; 
 }
 
 const DEFAULT_SPINS = 3;
-
-// Get user profile (spins and last reset date)
 const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   const userDocRef = doc(db, 'userProfiles', userId);
   const userDocSnap = await getDoc(userDocRef);
@@ -61,7 +53,6 @@ const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   return null;
 };
 
-// Initialize or reset spins for a user
 const initializeOrResetSpins = async (userId: string): Promise<UserProfile> => {
   const currentDate = getCurrentDateString();
   const newUserProfile: UserProfile = {
@@ -69,31 +60,28 @@ const initializeOrResetSpins = async (userId: string): Promise<UserProfile> => {
     lastSpinsResetDate: currentDate,
   };
   const userDocRef = doc(db, 'userProfiles', userId);
-  await setDoc(userDocRef, newUserProfile, { merge: true }); // merge true to not overwrite other fields if any
+  await setDoc(userDocRef, newUserProfile, { merge: true }); 
   return newUserProfile;
 };
 
-// Update only the spins count for a user
 const updateUserSpinsCount = async (userId: string, newSpinsLeft: number): Promise<void> => {
   const userDocRef = doc(db, 'userProfiles', userId);
   await setDoc(userDocRef, { spinsLeft: newSpinsLeft }, { merge: true });
 };
 
-// Interface for the data structure of a win record
 interface WinRecordData {
   userId: string;
   timestamp: FieldValue;
   winAmount: number;
   winningWord: string | null;
-  symbols: SlotSymbol[]; // Storing the array of symbol objects
+  symbols: SlotSymbol[];
 }
 
-// Extended interface for win record including the win code
 interface WinRecordDataWithCode extends WinRecordData {
   winCode: string;
-  codeFormat: string; // e.g., "XX9999"
+  codeFormat: string; 
   isClaimed: boolean;
-  claimedAt?: Timestamp | null; // Timestamp when the code was claimed
+  claimedAt?: Timestamp | null;
 }
 
 const CODE_CHARSET_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -101,7 +89,6 @@ const CODE_CHARSET_NUMBERS = "0123456789";
 const CODE_LENGTH_LETTERS = 2;
 const CODE_LENGTH_NUMBERS = 4;
 
-// Generates a random code in XX9999 format
 const generateRandomCode = (): string => {
   let code = "";
   for (let i = 0; i < CODE_LENGTH_LETTERS; i++) {
@@ -113,17 +100,15 @@ const generateRandomCode = (): string => {
   return code;
 };
 
-// Checks if a given win code is unique among unclaimed wins
 const isCodeUnique = async (code: string): Promise<boolean> => {
   const q = query(collection(db, "userWins"), where("winCode", "==", code), where("isClaimed", "==", false));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.empty; // True if no documents found (code is unique for unclaimed wins)
+  return querySnapshot.empty; 
 };
 
-// Generates a unique win code by repeatedly generating and checking
 const generateUniqueWinCode = async (): Promise<string> => {
   let attempts = 0;
-  const MAX_ATTEMPTS = 10; // Safeguard against infinite loops if code space gets too full
+  const MAX_ATTEMPTS = 10; 
 
   while (attempts < MAX_ATTEMPTS) {
     const newCode = generateRandomCode();
@@ -132,10 +117,7 @@ const generateUniqueWinCode = async (): Promise<string> => {
     }
     attempts++;
   }
-  // Fallback or error handling if a unique code cannot be generated after MAX_ATTEMPTS
-  // This is unlikely with 6.76 million combinations but good practice
   console.error("Failed to generate a unique win code after", MAX_ATTEMPTS, "attempts.");
-  // Consider throwing an error or returning a default/fallback or trying a different strategy
   throw new Error("Could not generate a unique win code.");
 };
 
@@ -143,7 +125,7 @@ export const saveUserWin = async (
   userId: string,
   winAmount: number,
   winningWord: string | null,
-  symbols: SlotSymbol[] // The array of 3 symbols that formed the win
+  symbols: SlotSymbol[]
 ): Promise<{winId: string, winCode: string} | undefined> => {
   if (!userId) {
     console.error("Cannot save win: No user ID provided.");
@@ -166,20 +148,17 @@ export const saveUserWin = async (
       winCode: uniqueWinCode,
       codeFormat: "XX9999",
       isClaimed: false,
-      claimedAt: null, // Initially not claimed
+      claimedAt: null,
     };
     const docRef = await addDoc(collection(db, "userWins"), winData);
     console.log("Win recorded in Firestore with ID: ", docRef.id, "and Code:", uniqueWinCode);
     return { winId: docRef.id, winCode: uniqueWinCode };
   } catch (error) {
     console.error("Error saving user win to Firestore: ", error);
-    // Consider more sophisticated error handling or re-throwing if needed
-    // If generateUniqueWinCode throws, it will be caught here.
-    throw error; // Re-throw the error so the caller can handle it
+    throw error; 
   }
 };
 
-// Funktionen für die Verwaltung von Gast-Spins über localStorage
 const saveGuestSpinToLocalStorage = () => {
   const currentDate = getCurrentDateString();
   if (typeof window !== 'undefined') {
@@ -208,14 +187,13 @@ const registerWithEmail = async (email: string, password: string): Promise<User>
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Bestätigungs-E-Mail senden
     await sendEmailVerification(user);
     console.log('Bestätigungs-E-Mail wurde gesendet an:', email);
     
     return user;
   } catch (error) {
     console.error("Fehler bei der Registrierung:", error);
-    throw error; // Fehler weitergeben für besseres Error-Handling
+    throw error; 
   }
 };
 
@@ -224,9 +202,7 @@ const loginWithEmail = async (email: string, password: string): Promise<User> =>
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Überprüfen, ob die E-Mail bestätigt wurde
     if (!user.emailVerified) {
-      // Wenn die E-Mail nicht bestätigt wurde, erneut eine Bestätigungs-E-Mail senden
       await sendEmailVerification(user);
       throw new Error("E-Mail-Adresse nicht bestätigt. Eine neue Bestätigungs-E-Mail wurde gesendet.");
     }
@@ -234,25 +210,24 @@ const loginWithEmail = async (email: string, password: string): Promise<User> =>
     return user;
   } catch (error) {
     console.error("Fehler bei der Anmeldung:", error);
-    throw error; // Fehler weitergeben für besseres Error-Handling
+    throw error; 
   }
 };
 
 const resetPassword = async (email: string): Promise<boolean> => {
   try {
     await sendPasswordResetEmail(auth, email, {
-      url: window.location.origin, // Fügt die aktuelle Domain als Rückkehr-URL hinzu
-      handleCodeInApp: false // Für Standard-E-Mail-Handling
+      url: window.location.origin, 
+      handleCodeInApp: false 
     });
     console.log('Passwort-Zurücksetzen-E-Mail wurde gesendet an:', email);
     return true;
   } catch (error) {
     console.error("Fehler beim Zurücksetzen des Passworts:", error);
-    throw error; // Fehler weitergeben für besseres Error-Handling
+    throw error;  
   }
 };
 
-// Funktion zum erneuten Senden der Bestätigungs-E-Mail
 const sendVerificationEmail = async (user: User): Promise<boolean> => {
   try {
     await sendEmailVerification(user);
@@ -264,10 +239,8 @@ const sendVerificationEmail = async (user: User): Promise<boolean> => {
   }
 };
 
-// Funktion zum Überprüfen, ob die E-Mail-Adresse bestätigt wurde
 const checkEmailVerification = async (user: User): Promise<boolean> => {
   try {
-    // Force-Reload des User-Objekts, um den aktuellen Status zu erhalten
     await user.reload();
     return user.emailVerified;
   } catch (error) {
