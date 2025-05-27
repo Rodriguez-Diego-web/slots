@@ -328,8 +328,8 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
       // Erst starten ohne Zielposition, damit die Walze länger frei dreht
       targetScrollPositionRef.current = null;
 
-      // Verzögerung vor dem Setzen des Ziels (2500ms + 800ms pro Walze = stark gestaffelte Stopps)
-      const minSpinTime = 8500 + (reelId * 800);
+      // EXTREM lange Verzögerung vor dem Setzen des Ziels (20000ms + 3000ms pro Walze = sehr stark gestaffelte Stopps)
+      const minSpinTime = 20000 + (reelId * 3000);
       
       // Nach der Mindestdrehzeit erst das Ziel setzen
       window.setTimeout(() => {

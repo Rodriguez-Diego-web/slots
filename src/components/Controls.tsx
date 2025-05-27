@@ -47,13 +47,20 @@ const Controls: React.FC<ControlsProps> = ({
     <div className="flex flex-col items-center justify-center p-4 w-full">
       <button 
         onClick={() => {
+          // Extrem wichtig: Absolut keine Klicks während des Drehens zulassen
+          if (spinning) {
+            console.log('BUTTON IST GESPERRT! KLICK WIRD IGNORIERT!');
+            return;
+          }
+          
           if (guestShouldLogin && showLoginPrompt) {
             showLoginPrompt();
-          } else if (canSpin && !spinning) {
-            // Nur Spin auslösen, wenn definitiv erlaubt und NICHT bereits am Drehen
+          } else if (canSpin) {
             onSpin();
           }
         }}
+        // Extrem wichtig: CSS pointer-events: none während des Drehens und div disabled
+        style={spinning ? { pointerEvents: 'none', cursor: 'not-allowed' } : {}}
         disabled={spinning || (!canSpin && !guestShouldLogin)}
         className={`
           w-full max-w-xs py-4 px-8 text-2xl font-bold rounded-lg shadow-lg transition-all duration-300 ease-in-out 
@@ -62,7 +69,6 @@ const Controls: React.FC<ControlsProps> = ({
            (!canSpin && !guestShouldLogin) ? 'bg-gray-500 cursor-not-allowed' : 
            'bg-gradient-to-r from-yellow-500 to-red-500 text-white cursor-pointer hover:from-yellow-600 hover:to-red-600 focus:ring-red-300'}
         `}
-        style={spinning ? { pointerEvents: 'none' } : {}}
       >
         {buttonText}
       </button>
