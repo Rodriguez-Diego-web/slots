@@ -63,7 +63,7 @@ const Controls: React.FC<ControlsProps> = ({
         style={spinning ? { pointerEvents: 'none', cursor: 'not-allowed' } : {}}
         disabled={spinning || (!canSpin && !guestShouldLogin)}
         className={`
-          w-full max-w-xs py-4 px-8 text-2xl font-bold rounded-lg shadow-lg transition-all duration-300 ease-in-out 
+          w-full max-w-xs py-4 px-8 text-2xl font-bold font-white-gorilla rounded-lg shadow-lg transition-all duration-300 ease-in-out 
           transform hover:scale-105 focus:outline-none focus:ring-4
           ${spinning ? 'bg-gray-700 opacity-70 cursor-wait' : // Eindeutig anderer Stil für den drehenden Zustand
            (!canSpin && !guestShouldLogin) ? 'bg-gray-500 cursor-not-allowed' : 

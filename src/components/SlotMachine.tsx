@@ -23,10 +23,9 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // Globales Spin-Lock-Timing (außerhalb der Komponente)
 let GLOBAL_LAST_SPIN_TIME = 0;
-const GLOBAL_MIN_TIME_BETWEEN_SPINS = 30000; // 30 Sekunden absolutes Minimum zwischen Spins
+const GLOBAL_MIN_TIME_BETWEEN_SPINS = 4000; // 5 Sekunden absolutes Minimum zwischen Spins
 
 const SlotMachine = () => {
-  const [spinning, setSpinning] = useState(false);
   const isSpinningRef = useRef(false); 
   const [finalSymbols, setFinalSymbols] = useState<SlotSymbol[]>([]);
   const [winAmount, setWinAmount] = useState(0);
@@ -39,13 +38,9 @@ const SlotMachine = () => {
   const [displayedWinCode, setDisplayedWinCode] = useState<string | null>(null);
   const isWinSaved = useRef(false); 
   
-  // States für absolutes globales Lock-Tracking
+  // State für absoltes globales Lock-Tracking
   const [buttonLocked, setButtonLocked] = useState(false);
-  const [lockRemainingTime, setLockRemainingTime] = useState(0);
   
-  // Timer Ref für regelmäßige Updates der verbleibenden Sperrzeit
-  const lockTimerRef = useRef<number | null>(null);
-
   const { currentUser, isAuthLoading } = useAuth();
 
   const completedReelsRef = useRef(0);
@@ -111,18 +106,15 @@ const SlotMachine = () => {
     const now = Date.now();
     const timeSinceGlobalSpin = now - GLOBAL_LAST_SPIN_TIME;
     
+    // Nur sperren, wenn seit dem letzten Spin nicht genug Zeit vergangen ist
     if (timeSinceGlobalSpin < GLOBAL_MIN_TIME_BETWEEN_SPINS) {
-      // Es ist noch nicht genug Zeit seit dem letzten globalen Spin vergangen
       setButtonLocked(true);
       
-      // Timer setzen, um den Button nach Ablauf der Mindestzeit zu entsperren
-      const remainingLockTime = GLOBAL_MIN_TIME_BETWEEN_SPINS - timeSinceGlobalSpin;
-      const unlockTimer = setTimeout(() => {
+      // Timer für die automatische Entsperrung nach der verbleibenden Zeit
+      const remainingTime = GLOBAL_MIN_TIME_BETWEEN_SPINS - timeSinceGlobalSpin;
+      setTimeout(() => {
         setButtonLocked(false);
-        console.log('Globale Sperre aufgehoben nach:', Math.round(GLOBAL_MIN_TIME_BETWEEN_SPINS/1000), 'Sekunden');
-      }, remainingLockTime);
-      
-      return () => clearTimeout(unlockTimer);
+      }, remainingTime);
     }
   }, []);
 
@@ -139,17 +131,17 @@ const SlotMachine = () => {
     }
     
     // LOKALER LOCK CHECK: 
-    const ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS = 20000; // 20 Sekunden lokales Minimum
+    const ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS = 4000; // Reduziert auf 4 Sekunden lokales Minimum
     const timeSinceLastSpin = now - lastSpinTimeRef.current;
     
     // Prüfen, ob seit dem letzten Spin genügend Zeit vergangen ist (lokaler Check)
     if (timeSinceLastSpin < ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS) {
-      console.log(`Zu früher Spin-Versuch: Nur ${Math.round(timeSinceLastSpin/1000)}s seit letztem Spin vergangen. Minimum: ${ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS/1000}s`);
+      console.log(`HARTER LOCK: Zu früher Spin-Versuch: Nur ${Math.round(timeSinceLastSpin/1000)}s seit letztem Spin vergangen. Minimum: ${ABSOLUTE_MIN_TIME_BETWEEN_SPINS_MS/1000}s`);
       return; // Absolut keine Spins zulassen, wenn lokale Mindestzeit nicht vergangen ist
     }
     
     // UI-LOCK CHECK: Prüfen, ob bereits eine Drehung läuft (verhindert Doppelklicks)
-    if (isSpinningRef.current || spinning || isAuthLoading || buttonLocked) {
+    if (isSpinningRef.current || isAuthLoading || buttonLocked) {
       console.log('Drehung läuft bereits, Button ist gesperrt, oder Ladevorgang aktiv. Spin-Versuch ignoriert.');
       return;
     }
@@ -158,51 +150,29 @@ const SlotMachine = () => {
     lastSpinTimeRef.current = now;
     GLOBAL_LAST_SPIN_TIME = now;
     
-    // Button global sperren für die nächsten 30 Sekunden
+    // Button global sperren
     setButtonLocked(true);
-    setLockRemainingTime(GLOBAL_MIN_TIME_BETWEEN_SPINS);
     
-    // Timer für die Anzeige der verbleibenden Zeit starten
-    if (lockTimerRef.current) {
-      window.clearInterval(lockTimerRef.current);
-    }
-    
-    // Alle 1000ms die verbleibende Zeit aktualisieren
-    lockTimerRef.current = window.setInterval(() => {
-      const elapsed = Date.now() - GLOBAL_LAST_SPIN_TIME;
-      const remaining = Math.max(0, GLOBAL_MIN_TIME_BETWEEN_SPINS - elapsed);
-      
-      setLockRemainingTime(remaining);
-      
-      // Timer stoppen, wenn keine Zeit mehr übrig ist
-      if (remaining <= 0) {
-        if (lockTimerRef.current) {
-          window.clearInterval(lockTimerRef.current);
-          lockTimerRef.current = null;
-        }
-        setButtonLocked(false);
-        console.log('Globale Sperre aufgehoben nach:', Math.round(GLOBAL_MIN_TIME_BETWEEN_SPINS/1000), 'Sekunden');
-      }
-    }, 1000);
+    // Timer für die automatische Entsperrung nach der Mindestzeit
+    setTimeout(() => {
+      setButtonLocked(false);
+    }, GLOBAL_MIN_TIME_BETWEEN_SPINS);
     
     isWinSaved.current = false;
     
     isSpinningRef.current = true;
-    setSpinning(true);
     currentSpinIdRef.current += 1; 
     const newSpinId = currentSpinIdRef.current;
 
     if (!currentUser && guestSpinUsed) {
       setShowLoginPromptModal(true);
       isSpinningRef.current = false;
-      setSpinning(false);
       return;
     }
 
     if (currentUser && attemptsLeft <= 0) {
       setShowOutOfSpinsModal(true);
       isSpinningRef.current = false; 
-      setSpinning(false);
       return;
     }
 
@@ -246,7 +216,7 @@ const SlotMachine = () => {
         reel.startSpinning(spinResult.symbols, newSpinId); 
       }
     });
-  }, [spinning, currentUser, guestSpinUsed, isAuthLoading, attemptsLeft, buttonLocked]);
+  }, [currentUser, guestSpinUsed, isAuthLoading, attemptsLeft, buttonLocked]);
 
   // Speichern, welche Walzen fertig sind
   const completedReelIdsRef = useRef<Set<number>>(new Set());
@@ -274,26 +244,30 @@ const SlotMachine = () => {
       
       // Alle Walzen zurücksetzen für den nächsten Spin
       completedReelIdsRef.current.clear();
-      console.log(`All reels completed for spin ID: ${spinId}. Processing result...`);
+      console.log(`All reels completed for spin ID: ${spinId}. Processing result... Win amount: ${latestWinAmountRef.current}, Win word: ${latestWinningWordRef.current}`);
+      console.log('Checking for win: latestWinAmountRef.current =', latestWinAmountRef.current);
       if (latestWinAmountRef.current > 0) {
+        console.log('GEWINN ERKANNT! Zeige Popup an...');
         playWinSound();
 
         if (currentUser && !isWinSaved.current) {
+          // Zuerst sofort das Popup anzeigen
+          setTimeout(() => {
+            setWinningWord(latestWinningWordRef.current);
+            setWinAmount(latestWinAmountRef.current);
+            setShowWinPopup(true);
+            stopSpinSound(); 
+          }, 500);
+          
+          // Dann asynchron den Gewinncode laden und später aktualisieren
           saveUserWin(currentUser.uid, latestWinAmountRef.current, latestWinningWordRef.current || '', finalSymbolsRef.current)
             .then(winData => { 
               setDisplayedWinCode(winData ? winData.winCode : null); 
               isWinSaved.current = true; 
-              setTimeout(() => {
-                setShowWinPopup(true);
-                stopSpinSound(); 
-              }, 500);
             })
             .catch(error => {
               console.error('Fehler beim Speichern des Gewinns:', error);
-              setTimeout(() => {
-                setShowWinPopup(true);
-                stopSpinSound();
-              }, 500);
+              isWinSaved.current = true; // Trotzdem als gespeichert markieren
             });
         } else if (!currentUser && latestWinAmountRef.current > 0) { 
           if (!isWinSaved.current) {
@@ -302,6 +276,8 @@ const SlotMachine = () => {
             isWinSaved.current = true;
           }
           setTimeout(() => {
+            setWinningWord(latestWinningWordRef.current);
+            setWinAmount(latestWinAmountRef.current);
             setShowWinPopup(true);
             stopSpinSound();
           }, 500);
@@ -314,16 +290,15 @@ const SlotMachine = () => {
         const spinStartTime = lastSpinTimeRef.current;
         const currentTime = Date.now();
         const elapsedSinceSpinStart = currentTime - spinStartTime;
-        const MINIMUM_TOTAL_LOCK_TIME = 15000; // 15 Sekunden Mindestsperre
+        const MINIMUM_TOTAL_LOCK_TIME = 1000; // 1 Sekunde Mindestsperre
         
-        // Berechnen, wie viel länger wir noch warten müssen, um auf 15 Sekunden zu kommen
-        const remainingLockTime = Math.max(MINIMUM_TOTAL_LOCK_TIME - elapsedSinceSpinStart, 5000);
+        // Berechnen, wie viel länger wir noch warten müssen, um auf 1 Sekunde zu kommen
+        const remainingLockTime = Math.max(MINIMUM_TOTAL_LOCK_TIME - elapsedSinceSpinStart, 500);
         
         console.log(`Sperre wird nach ${remainingLockTime/1000} weiteren Sekunden aufgehoben (Gesamt: ${(elapsedSinceSpinStart + remainingLockTime)/1000}s seit Spin-Start)`); 
         
         setTimeout(() => {
           console.log('Final button unlock after extended lock period');
-          setSpinning(false);
           isSpinningRef.current = false;
         }, remainingLockTime);
       }
@@ -335,7 +310,6 @@ const SlotMachine = () => {
     setShowWinPopup(false);
     setWinningWord(null);
     if (latestWinAmountRef.current > 0) {
-      setSpinning(false);
       isSpinningRef.current = false;
     }
   };
@@ -347,10 +321,9 @@ const SlotMachine = () => {
   return (
     <div className="flex flex-col items-center w-full max-w-md mx-auto">
       {/* Absoluter Overlay zum Blockieren aller Interaktionen während des Spins */}
-      {(spinning || buttonLocked) && (
+      {(buttonLocked) && (
         <SpinLockOverlay 
-          isActive={spinning || buttonLocked} 
-          remainingTime={lockRemainingTime}
+          isActive={buttonLocked} 
         />
       )}
       
@@ -388,7 +361,6 @@ const SlotMachine = () => {
           >
             <Reel 
               reelId={reelIndex} 
-              spinning={spinning} 
               finalSymbol={finalSymbols[reelIndex]} 
               onSpinComplete={handleReelComplete} 
               delayStart={reelIndex * 200} 
@@ -438,7 +410,7 @@ const SlotMachine = () => {
 
       <Controls 
         onSpin={handleSpin} 
-        spinning={spinning || buttonLocked} // Entweder aktuell am Drehen oder global gesperrt
+        spinning={buttonLocked} // Entweder aktuell am Drehen oder global gesperrt
         attemptsLeft={attemptsLeft} 
         isGuest={!currentUser}
         guestSpinUsed={guestSpinUsed}

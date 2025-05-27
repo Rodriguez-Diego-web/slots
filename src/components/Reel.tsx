@@ -11,7 +11,6 @@ export interface ReelRefMethods {
 }
 
 interface ReelProps {
-  spinning: boolean;
   finalSymbol: SlotSymbol | null; 
   onSpinComplete: (reelId: number, spinId: number) => void;
   delayStart?: number;
@@ -22,13 +21,13 @@ const REEL_STRIP_LENGTH = 30;
 const SYMBOL_HEIGHT = 120;
 const VISIBLE_SYMBOLS = 3; 
 
-// Animation-Konstanten - optimiert für deutlich längere Animationen
-const MAX_SPEED = 35; // Reduzierte Maximalgeschwindigkeit für längere Drehzeit
-const ACCELERATION = 0.3; // Noch langsamere Beschleunigung für deutlich längere Spin-Zeit
-const DECELERATION_FACTOR = 0.985; // Sehr langsames Abbremsen für deutlich längere Auslaufzeit
-const TARGETED_STOP_ANTICIPATION_SPINS = 3.0; // Stark erhöhte "Extra"-Umdrehungen vor dem Zielstopp
-const MIN_SPEED_NEAR_TARGET = 0.6; // Stark reduzierte Mindestgeschwindigkeit nahe dem Ziel
-const VERY_MIN_SPEED = 0.3; // Stark reduzierte Endgeschwindigkeit für sehr langes Auslaufen
+// Animation-Konstanten - optimiert für kürzere, aber immer noch flüssige Animationen
+const MAX_SPEED = 50; // Höhere Maximalgeschwindigkeit für kürzere Drehzeit
+const ACCELERATION = 1.5; // Schnellere Beschleunigung für kürzere Spin-Zeit
+const DECELERATION_FACTOR = 0.92; // Schnelleres Abbremsen für kürzere Auslaufzeit
+const TARGETED_STOP_ANTICIPATION_SPINS = 1.0; // Reduzierte "Extra"-Umdrehungen vor dem Zielstopp
+const MIN_SPEED_NEAR_TARGET = 1.0; // Höhere Mindestgeschwindigkeit nahe dem Ziel
+const VERY_MIN_SPEED = 0.5; // Höhere Endgeschwindigkeit für kürzeres Auslaufen
 
 const initializeReelStrip = (): Symbol[] => {
   const newStrip: Symbol[] = [];
@@ -45,8 +44,7 @@ const initializeReelStrip = (): Symbol[] => {
 };
 
 const Reel = forwardRef<ReelRefMethods, ReelProps>(({ 
-  spinning, 
-  finalSymbol, // Prop for final symbol (can be overridden by imperative call)
+  finalSymbol, 
   onSpinComplete, 
   delayStart = 0,
   reelId
@@ -72,7 +70,7 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
     latestIsAnimatingRef.current = isAnimating;
   }, [isAnimating]);
   
-  // Neuer Effekt zum Vorladen der Bilder
+  // Effekt zum Vorladen der Bilder
   useEffect(() => {
     // Keine Vorladung notwendig, wenn bereits geladen
     if (imagesLoaded || reelStrip.length === 0) return;
@@ -158,8 +156,6 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
           // CRITICALLY IMPORTANT: Reset the animation protection flag
           // This ensures that future spins are allowed after this one completes
           isCurrentlyAnimatingRef.current = false;
-          console.log(`Reel ${reelId}: Animation completed and animation lock RELEASED.`);
-          
           if (currentAnimationSpinIdRef.current !== null) { // Sicherstellen, dass eine ID vorhanden ist
             onSpinComplete(reelId, currentAnimationSpinIdRef.current); // Geändert: reelId und spinId zurückgeben
           }
@@ -205,7 +201,6 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
         // If more complex overshoot behavior (like a bounce-back) is desired,
         // it would require additional logic here, possibly adjusting currentSpeedRef.current
         // and its direction if newPosition significantly overshoots.
-        // For now, we rely on aggressive deceleration and the comprehensive snapping condition.
 
         // console.log(`Reel ${reelId} Stepping: NewPos=${newPosition.toFixed(2)}, NewSpeed=${currentSpeedRef.current.toFixed(2)}, MoveStep=${moveStep.toFixed(2)}, Dir=${direction}`);
 
@@ -298,7 +293,7 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
   // Hard-coded protection to prevent multiple spins while one is in progress
   const isCurrentlyAnimatingRef = useRef(false);
   const lastAnimationStartTimeRef = useRef(0);
-  const MINIMUM_ANIMATION_TIME = 30000; // 30 seconds minimum animation time
+  const MINIMUM_ANIMATION_TIME = 3000; // 3 seconds minimum animation time
   
   useImperativeHandle(ref, () => ({
     startSpinning: (finalSymbolsForReels: Symbol[], spinId: number) => { // spinId als Parameter hinzugefügt
@@ -363,7 +358,7 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
       targetScrollPositionRef.current = null;
 
       // EXTREM lange Verzögerung vor dem Setzen des Ziels (20000ms + 3000ms pro Walze = sehr stark gestaffelte Stopps)
-      const minSpinTime = 20000 + (reelId * 3000);
+      const minSpinTime = 1000 + (reelId * 300);
       
       // Nach der Mindestdrehzeit erst das Ziel setzen
       window.setTimeout(() => {
@@ -400,77 +395,6 @@ const Reel = forwardRef<ReelRefMethods, ReelProps>(({
       }, actualDelay);
     }
   }), [reelStrip, reelId, calculateRandomStopPosition, delayStart, calculateStopPositionForSymbol, imagesLoaded]); // Unnötige stripScrollPosition-Abhängigkeit entfernt
-
-  useEffect(() => {
-    let startDelayTimer: number | undefined;
-    const currentFinalSymbol = finalSymbol; // Capture for current effect execution
-
-    if (spinning && reelStrip.length > 0) {
-      // If spinning is true, and no target is currently set (e.g., by an imperative call),
-      // then this effect can try to set one up based on the finalSymbol prop.
-      // Otherwise, if a target is already set, we assume the imperative call is in charge.
-      if (targetScrollPositionRef.current === null && currentFinalSymbol) {
-        console.log(`Reel ${reelId}: 'spinning' prop is true, no target set. Attempting to set target from prop: ${currentFinalSymbol.id}`);
-        currentSpeedRef.current = MAX_SPEED;
-        const targetIndex = reelStrip.findIndex(s => s.id === currentFinalSymbol.id);
-        if (targetIndex !== -1) {
-          targetScrollPositionRef.current = calculateStopPositionForSymbol(currentFinalSymbol); 
-          if (targetScrollPositionRef.current !== null) {
-            console.log(`Reel ${reelId}: Spinning (prop). Target set for ${currentFinalSymbol.id} at index ${targetIndex} to ${targetScrollPositionRef.current.toFixed(2)} (using specific calculation). Target set: true`);
-          } else {
-            console.warn(`Reel ${reelId}: Spinning (prop). Target for ${currentFinalSymbol.id} found, but calculateStopPositionForSymbol returned null. Defaulting to random. Target set: false`);
-            targetScrollPositionRef.current = calculateRandomStopPosition();
-          }
-        } else {
-          console.warn(`Reel ${reelId}: Spinning (prop). Final symbol ${currentFinalSymbol.id} not found. Defaulting to random. Target set: false`);
-          targetScrollPositionRef.current = calculateRandomStopPosition();
-        }
-      } else if (targetScrollPositionRef.current !== null) {
-        console.log(`Reel ${reelId}: 'spinning' prop is true, but a target ${targetScrollPositionRef.current.toFixed(2)} is already set (likely by imperative call). Honoring existing target.`);
-        // Ensure speed is appropriate if we are just joining an in-progress spin setup
-        if (!latestIsAnimatingRef.current) currentSpeedRef.current = MAX_SPEED;
-      } else if (!currentFinalSymbol) {
-        console.warn(`Reel ${reelId}: 'spinning' prop is true, but no currentFinalSymbol prop available and no target set. Defaulting to random.`);
-        currentSpeedRef.current = MAX_SPEED;
-        targetScrollPositionRef.current = calculateRandomStopPosition();
-      }
-
-      // This timeout primarily ensures that setIsAnimating(true) happens after delayStart,
-      // but only if a target is actually established.
-      startDelayTimer = window.setTimeout(() => {
-        if (!spinning) {
-          console.log(`%cReel ${reelId}: Spin cancelled during start delay (useEffect for prop).`, 'color: orange');
-          return;
-        }
-        // Log current state *before* deciding to animate
-        console.log(`%cReel ${reelId}: useEffect[spinning] - Start delay ended. Current IsAnimating: ${latestIsAnimatingRef.current}. Has Target: ${targetScrollPositionRef.current !== null}`, 'color: cyan');
-        
-        if (targetScrollPositionRef.current !== null && !latestIsAnimatingRef.current) {
-          console.log(`%cReel ${reelId}: useEffect[spinning] - Target is set, was not animating. Setting isAnimating to true.`, 'color: green');
-          setIsAnimating(true); 
-        } else if (targetScrollPositionRef.current === null) {
-          console.warn(`%cReel ${reelId}: useEffect[spinning] - Start delay ended but NO TARGET IS SET. Cannot start animation.`, 'color: red');
-        } else if (latestIsAnimatingRef.current) {
-          console.log(`%cReel ${reelId}: useEffect[spinning] - Start delay ended. Animation already in progress.`, 'color: blue');
-        }
-      }, delayStart);
-
-    } else if (!spinning && latestIsAnimatingRef.current) {
-      // This handles external stop if 'spinning' prop turns false AND no target was set imperatively.
-      // If a target IS set, the animation loop will handle deceleration.
-      if (targetScrollPositionRef.current === null) {
-        console.warn(`Reel ${reelId}: 'spinning' prop became false, no target set. Setting random stop.`);
-        targetScrollPositionRef.current = calculateRandomStopPosition();
-      }
-    } else if (!spinning && !latestIsAnimatingRef.current) {
-      // Already stopped, or was never started, do nothing.
-    }
-
-    return () => {
-      if (startDelayTimer) window.clearTimeout(startDelayTimer);
-    };
-  // Corrected dependencies: reelStrip is used by findIndex
-  }, [spinning, finalSymbol, reelStrip, delayStart, reelId, calculateRandomStopPosition, calculateStopPositionForSymbol]); 
 
   // Calculate currently visible symbols from the reelStrip based on stripScrollPosition
   const getVisibleSymbols = useCallback(() => {
