@@ -29,7 +29,7 @@ export const symbols: SlotSymbol[] = [
     name: 'Lifebar',
     image: '/symbols/7.png',
     weight: 3,    
-    value: 15,
+    value: 30,
     winningWordForMatch: "Calypso deiner Wahl"
   },
   {
@@ -66,12 +66,7 @@ export const symbols: SlotSymbol[] = [
   }
 ];
 
-const totalWeight = symbols.reduce((sum, symbol) => sum + symbol.weight, 0);
-
-let gamesPlayed = 0;
-let lastBigWin = 0;
-const CYCLE_LENGTH = 50; 
-const JACKPOT_MIN_GAMES = 100; 
+const totalWeight = symbols.reduce((sum, symbol) => sum + symbol.weight, 0); 
 
 export function getRandomSymbol(): SlotSymbol {
   const randNum = Math.random() * totalWeight;
@@ -106,33 +101,7 @@ export type SpinResult = {
 };
 
 export function spin(): SpinResult {
-  gamesPlayed++;
-  
-  let resultSymbols = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
-  
-  const gamesSinceWin = gamesPlayed - lastBigWin;
-  
-  if (gamesSinceWin > CYCLE_LENGTH) {
-    if (Math.random() < 0.05 * (gamesSinceWin / CYCLE_LENGTH)) {
-      const mediumWinSymbolCandidates = symbols.filter(s => s.value >= 5 && s.value < 50);
-      const winningSymbol = mediumWinSymbolCandidates.length > 0 
-                            ? mediumWinSymbolCandidates[Math.floor(Math.random() * mediumWinSymbolCandidates.length)] 
-                            : symbols.find(s => s.id === 'cheetos') || symbols[1]; 
-      resultSymbols = [winningSymbol, winningSymbol, winningSymbol];
-      lastBigWin = gamesPlayed; 
-    }
-  }
-  
-  if (gamesSinceWin > JACKPOT_MIN_GAMES) { 
-    if (Math.random() < 0.000001 * (gamesSinceWin / JACKPOT_MIN_GAMES)) { 
-      const jackpotSymbol = symbols.find(s => s.id === 'seven')!;
-      if (resultSymbols[0].id !== jackpotSymbol.id || resultSymbols[1].id !== jackpotSymbol.id || resultSymbols[2].id !== jackpotSymbol.id) {
-        resultSymbols = [jackpotSymbol, jackpotSymbol, jackpotSymbol];
-        lastBigWin = gamesPlayed; 
-      }
-    }
-  }
-  
+  const resultSymbols = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
   const winDetails = calculateWinDetails(resultSymbols);
 
   return {
@@ -142,13 +111,4 @@ export function spin(): SpinResult {
   };
 }
 
-export function resetGameState(): void {
-  gamesPlayed = 0;
-  lastBigWin = 0;
-}
-export function getGameStats(): { gamesPlayed: number, gamesSinceWin: number } {
-  return {
-    gamesPlayed,
-    gamesSinceWin: gamesPlayed - lastBigWin,
-  };
-}
+// Game-Stats wurden entfernt, da keine progressive Logik mehr verwendet wird
