@@ -14,9 +14,10 @@ interface WinPopupProps {
   onClose: () => void;
   winCode: string | null;
   symbols?: SlotSymbol[];
+  isUserLoggedIn?: boolean;
 }
 
-const WinPopup: React.FC<WinPopupProps> = ({ winningWord, winCode, onClose }) => {
+const WinPopup: React.FC<WinPopupProps> = ({ winningWord, winCode, onClose, isUserLoggedIn = false }) => {
   const [dimensions, setDimensions] = useState({ 
     width: typeof window !== 'undefined' ? window.innerWidth : 0, 
     height: typeof window !== 'undefined' ? window.innerHeight : 0 
@@ -68,7 +69,17 @@ const WinPopup: React.FC<WinPopupProps> = ({ winningWord, winCode, onClose }) =>
               </div>
             </>
           ) : (
-            <p className="text-red-500 text-md mb-6">Gewinncode wird generiert...</p>
+            <>
+              {isUserLoggedIn ? (
+                <p className="text-red-500 text-md mb-6">Gewinncode wird generiert...</p>
+              ) : (
+                <div className="mb-6">
+                  <p className="text-red-400 text-md mb-2">Du kannst leider nur als</p>
+                  <p className="text-red-400 text-md mb-2">eingeloggter Nutzer die Gewinne annehmen.</p>
+                  <p className="text-yellow-400 text-sm mt-3">Logge dich ein, um Gewinnodes zu erhalten!</p>
+                </div>
+              )}
+            </>
           )}
           
           <button 

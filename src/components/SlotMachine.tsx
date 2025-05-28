@@ -333,7 +333,8 @@ const SlotMachine = () => {
           winningWord={winningWord} 
           onClose={handleCloseWinPopup} 
           symbols={finalSymbolsRef.current} 
-          winCode={displayedWinCode} 
+          winCode={displayedWinCode}
+          isUserLoggedIn={!!currentUser} 
         />
       )}
 
