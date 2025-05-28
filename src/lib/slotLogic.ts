@@ -12,7 +12,7 @@ export const symbols: SlotSymbol[] = [
     id: 'seven',
     name: '7',
     image: '/symbols/6.png',
-    weight: 100,    
+    weight: 1,    
     value: 100,
     winningWordForMatch: "JACKPOT!"
   },
