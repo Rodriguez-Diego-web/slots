@@ -63,7 +63,7 @@ const SplashScreenContainer: React.FC<SplashScreenContainerProps> = ({ onComplet
 
   const splashContent = [
     {
-      title: "Willkommen bei CuxSnack Slot Machine!",
+      title: "Willkommen bei CUXSNACK\nSlot Machine!",
       description: "Drehe die Walzen und gewinne tolle Snack-Preise. Wische nach links, um mehr zu erfahren!",
       image: "/splash/Design ohne Titel (3).png"
     },
@@ -101,8 +101,8 @@ const SplashScreenContainer: React.FC<SplashScreenContainerProps> = ({ onComplet
           </button>
         </div>
         
-        {/* Bild und Text im oberen Bereich */}
-        <div className="absolute top-20 left-0 right-0">
+        {/* Bild und Text im oberen Bereich - mehr Platz für mobile Geräte */}
+        <div className="absolute top-16 left-0 right-0 bottom-32">
           <SplashScreen 
             key={currentScreen} // Wichtig für die Transition
             title={splashContent[currentScreen].title}
@@ -113,8 +113,8 @@ const SplashScreenContainer: React.FC<SplashScreenContainerProps> = ({ onComplet
           />
         </div>
 
-        {/* Dots und Button im unteren Bereich, absolut positioniert */}
-        <div className="absolute bottom-24 left-0 right-0 flex flex-col items-center gap-6">
+        {/* Dots und Button im unteren Bereich, absolut positioniert mit mehr Abstand */}
+        <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4 px-4">
           <SplashDots 
             count={4} 
             active={currentScreen} 
@@ -123,7 +123,7 @@ const SplashScreenContainer: React.FC<SplashScreenContainerProps> = ({ onComplet
           
           <button 
             onClick={currentScreen < 3 ? handleNext : handleComplete} 
-            className="bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 text-white font-bold py-3 px-8 rounded-lg w-full max-w-xs"
+            className="bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 text-white font-bold py-3 px-8 rounded-lg w-full max-w-xs text-lg"
           >
             {currentScreen < 3 ? "Weiter" : "Los geht's!"}
           </button>
