@@ -20,7 +20,7 @@ export const symbols: SlotSymbol[] = [
     id: 'gutschein',
     name: 'Gutschein',
     image: '/symbols/2.png',
-    weight: 2,    
+    weight: 5,    
     value: 20,
     winningWordForMatch: "GUTSCHEIN GEWONNEN!"
   },
@@ -28,7 +28,7 @@ export const symbols: SlotSymbol[] = [
     id: 'lifebar',
     name: 'Lifebar',
     image: '/symbols/7.png',
-    weight: 3,    
+    weight: 10,    
     value: 30,
     winningWordForMatch: "Calypso deiner Wahl"
   },
@@ -36,7 +36,7 @@ export const symbols: SlotSymbol[] = [
     id: 'takis',
     name: 'Takis',
     image: '/symbols/4.png',
-    weight: 4,    
+    weight: 15,    
     value: 10,
     winningWordForMatch: "FEURIGE TAKIS!"
   },
@@ -44,25 +44,25 @@ export const symbols: SlotSymbol[] = [
     id: 'cheetos',
     name: 'Cheetos',
     image: '/symbols/3.png',
-    weight: 8,    
+    weight: 25,    
     value: 5,
     winningWordForMatch: "Doritos deiner Wahl"
-  },
-  {
-    id: 'lays',
-    name: 'Lays',
-    image: '/symbols/5.png',
-    weight: 4,    
-    value: 3,
-    winningWordForMatch: "Snickers deiner Wahl"
   },
   {
     id: 'pombaeren',
     name: 'Pombären',
     image: '/symbols/1.png',
-    weight: 4,    
+    weight: 20,    
     value: 2,
     winningWordForMatch: "Capri-Sun deiner Wahl"
+  },
+  {
+    id: 'lays',
+    name: 'Lays',
+    image: '/symbols/5.png',
+    weight: 25,    
+    value: 3,
+    winningWordForMatch: "Snickers deiner Wahl"
   }
 ];
 
