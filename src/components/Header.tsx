@@ -32,7 +32,7 @@ const Header = () => {
       <div className="flex items-center justify-between max-w-screen-xl mx-auto">
         <div className="flex items-center">
           <Link href="/" className="cursor-pointer">
-            <Image src="/logo.png" alt="CUXSNACK Logo" width={160} height={40} style={{ height: 'auto' }} priority />
+            <Image src="/logo.png" alt="CUXSNACK Logo" width={160} height={40} style={{ width: 'auto', height: 'auto' }} priority />
           </Link>
         </div>
 

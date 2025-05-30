@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, FieldValue, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { getAnalytics, Analytics } from "firebase/analytics";
 import { SlotSymbol } from './slotLogic';
@@ -181,73 +181,7 @@ const clearGuestSpinFromLocalStorage = () => {
   }
 };
 
-// E-Mail/Passwort-Authentifizierungsfunktionen
-const registerWithEmail = async (email: string, password: string): Promise<User> => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    await sendEmailVerification(user);
-    console.log('Bestätigungs-E-Mail wurde gesendet an:', email);
-    
-    return user;
-  } catch (error) {
-    console.error("Fehler bei der Registrierung:", error);
-    throw error; 
-  }
-};
-
-const loginWithEmail = async (email: string, password: string): Promise<User> => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    if (!user.emailVerified) {
-      await sendEmailVerification(user);
-      throw new Error("E-Mail-Adresse nicht bestätigt. Eine neue Bestätigungs-E-Mail wurde gesendet.");
-    }
-    
-    return user;
-  } catch (error) {
-    console.error("Fehler bei der Anmeldung:", error);
-    throw error; 
-  }
-};
-
-const resetPassword = async (email: string): Promise<boolean> => {
-  try {
-    await sendPasswordResetEmail(auth, email, {
-      url: window.location.origin, 
-      handleCodeInApp: false 
-    });
-    console.log('Passwort-Zurücksetzen-E-Mail wurde gesendet an:', email);
-    return true;
-  } catch (error) {
-    console.error("Fehler beim Zurücksetzen des Passworts:", error);
-    throw error;  
-  }
-};
-
-const sendVerificationEmail = async (user: User): Promise<boolean> => {
-  try {
-    await sendEmailVerification(user);
-    console.log('Bestätigungs-E-Mail wurde erneut gesendet');
-    return true;
-  } catch (error) {
-    console.error("Fehler beim Senden der Bestätigungs-E-Mail:", error);
-    throw error;
-  }
-};
-
-const checkEmailVerification = async (user: User): Promise<boolean> => {
-  try {
-    await user.reload();
-    return user.emailVerified;
-  } catch (error) {
-    console.error("Fehler beim Überprüfen des E-Mail-Status:", error);
-    return false;
-  }
-};
+// E-Mail-Authentifizierung wurde entfernt, nur Google-Login ist zulässig
 
 export { 
   app, 
@@ -257,9 +191,6 @@ export {
   provider, 
   signInWithPopup, 
   signOut, 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
   type User, 
   getUserProfile,
   initializeOrResetSpins,
@@ -268,10 +199,5 @@ export {
   DEFAULT_SPINS,
   saveGuestSpinToLocalStorage,
   checkGuestSpinStatus,
-  clearGuestSpinFromLocalStorage,
-  registerWithEmail,
-  loginWithEmail,
-  resetPassword,
-  sendVerificationEmail,
-  checkEmailVerification
+  clearGuestSpinFromLocalStorage
 };
